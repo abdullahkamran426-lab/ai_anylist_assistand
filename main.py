@@ -697,6 +697,42 @@ elif page == "🧹 Clean Data":
 
     st.markdown("<div class='div'></div>", unsafe_allow_html=True)
 
+    # ── Download cleaned dataset ──
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    clean_filename = f"cleaned_{st.session_state.filename or 'dataset.csv'}"
+    if not clean_filename.lower().endswith(".csv"):
+        clean_filename += ".csv"
+
+    dl_col1, dl_col2 = st.columns([3, 1])
+    with dl_col1:
+        st.markdown(f"""
+        <div style='background:linear-gradient(135deg,rgba(34,211,165,.12) 0%,rgba(34,211,165,.03) 100%);
+                    border:1px solid rgba(34,211,165,.35);border-radius:var(--radius);
+                    padding:16px 20px;display:flex;align-items:center;gap:14px;height:100%'>
+            <div style='width:38px;height:38px;border-radius:10px;flex-shrink:0;
+                        background:rgba(34,211,165,.18);color:var(--success);
+                        display:flex;align-items:center;justify-content:center;font-size:1.1rem'>⬇️</div>
+            <div>
+                <div style='color:#fff;font-weight:700;font-size:.9rem'>Cleaned dataset ready</div>
+                <div style='color:#94a3b8;font-size:.8rem'>
+                    {df.shape[0]:,} rows · {df.shape[1]} columns · {len(st.session_state.clean_log)} step(s) applied
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    with dl_col2:
+        st.markdown("<div style='height:100%;display:flex;align-items:center'>", unsafe_allow_html=True)
+        st.download_button(
+            "⬇️ Download CSV",
+            data=csv_bytes,
+            file_name=clean_filename,
+            mime="text/csv",
+            use_container_width=True,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='div'></div>", unsafe_allow_html=True)
+
     # ── Left: controls   Right: live preview ──
     ctrl, prev = st.columns([1, 1.6], gap="large")
 
@@ -821,12 +857,23 @@ elif page == "🧹 Clean Data":
             st.caption("No numeric columns available.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 7. Reset
+        # 7. Reset & Download
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
-        if st.button("↩️ Reset to original", key="reset_clean"):
-            st.session_state.df = st.session_state.original_df.copy()
-            st.session_state.clean_log = ["↩️ Reset to original dataset"]
-            st.rerun()
+        rc1, rc2 = st.columns(2)
+        with rc1:
+            if st.button("↩️ Reset to original", key="reset_clean", use_container_width=True):
+                st.session_state.df = st.session_state.original_df.copy()
+                st.session_state.clean_log = ["↩️ Reset to original dataset"]
+                st.rerun()
+        with rc2:
+            st.download_button(
+                "⬇️ Download CSV",
+                data=csv_bytes,
+                file_name=clean_filename,
+                mime="text/csv",
+                key="dl_csv_bottom",
+                use_container_width=True,
+            )
 
     with prev:
         st.markdown("#### Live Preview")
