@@ -11,7 +11,9 @@ This repository contains a Streamlit-based web application for interactive CSV d
 - Ask an AI assistant questions about the dataset.
 - Export AI-generated insights to a PDF report.
 
-The codebase is small and organized as a flat structure with an entrypoint (`main.py`) and helper modules.
+The codebase is organized as a modular Streamlit application with helper modules responsible for data processing, visualization, AI integration, and report generation.
+
+---
 
 ## 2. Repository Structure
 
@@ -39,7 +41,114 @@ ali/
 
 - `.env`: Environment variables, typically storing `OPENROUTER_API_KEY`.
 
-## 3. Module Summaries and Function Documentation
+---
+
+# 3. Project Workflow
+
+## Workflow Summary
+
+The application follows a modular workflow that transforms a raw CSV dataset into AI-powered insights. After a CSV file is uploaded, it is loaded, cleaned, and stored in Streamlit Session State so that all modules share the same dataset. Users can then clean and explore the data, generate statistics, build interactive visualizations, ask questions through the AI assistant, and finally export the generated insights as a PDF report. This architecture keeps the application organized, efficient, and easy to maintain.
+
+## Workflow Diagram
+
+```text
+User
+ │
+ ▼
+Launch Streamlit Application
+ │
+ ▼
+main.py Initializes Application
+ │
+ ├── Load CSS & UI
+ ├── Initialize Session State
+ ├── Create Sidebar Navigation
+ └── Wait for User Input
+ │
+ ▼
+Upload CSV Dataset
+ │
+ ▼
+analysis.load_data()
+ │
+ ▼
+Read CSV using Pandas
+ │
+ ▼
+analysis.clean_data()
+ │
+ ▼
+Basic Data Cleaning
+ │
+ ▼
+Store DataFrame in st.session_state
+ │
+ ├──────────────────────────────┐
+ │                              │
+ ▼                              ▼
+Clean Data                  Dataset Preview
+ │                              │
+ ▼                              ▼
+Update DataFrame          View Dataset
+ │                              │
+ └──────────────┬───────────────┘
+                │
+                ▼
+          Statistics Module
+                │
+                ▼
+      Generate Summary Statistics
+                │
+                ▼
+        Visualization Module
+                │
+                ▼
+ Create Interactive Plotly Charts
+                │
+                ▼
+          AI Assistant Module
+                │
+                ▼
+analysis.get_summary()
+                │
+                ▼
+Create Dataset Summary
+                │
+                ▼
+User Question + Dataset Summary
+                │
+                ▼
+ai_helper.ask_ai()
+                │
+                ▼
+OpenRouter API
+                │
+                ▼
+Llama 3.1 8B Model
+                │
+                ▼
+AI Generated Answer
+                │
+                ▼
+Store Response in Session State
+                │
+                ▼
+Export Module
+                │
+                ▼
+analysis.export_to_pdf()
+                │
+                ▼
+Generate AI_Analysis_Report.pdf
+                │
+                ▼
+Download Report
+```
+
+---
+
+
+## 4. Module Summaries and Function Documentation
 
 ### `main.py`
 
@@ -146,7 +255,7 @@ Handles AI client initialization and dataset question answering.
   - Sets `max_tokens=500` and `temperature=0.3`.
   - Returns the AI response or an error string if a failure occurs.
 
-## 4. Dependency Notes
+## 5. Dependency Notes
 
 ### Required Libraries
 
@@ -167,7 +276,7 @@ From `requirements.txt`:
 - `matplotlib` and `seaborn` are installed but not referenced by the current source files.
 - The AI flow is optional if `OPENROUTER_API_KEY` is not configured.
 
-## 5. Running the App
+## 6. Running the App
 
 ### Setup
 
