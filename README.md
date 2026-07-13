@@ -24,7 +24,7 @@ ali/
 |-- requirements.txt
 |-- .env
 |-- .gitignore
-|-- PROJECT_DOCUMENTATION.md
+|-- README.md
 ```
 
 ### Source Files
