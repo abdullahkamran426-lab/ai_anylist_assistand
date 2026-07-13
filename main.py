@@ -400,7 +400,7 @@ elif page == "📂 Upload Dataset":
 
     if uploaded:
         with st.spinner("Reading and auto-cleaning…"):
-            raw_df = load_data(uploaded)
+            raw_df = load_data(uploaded.getvalue())
             df = clean_data(raw_df)
 
         st.session_state.df = df
