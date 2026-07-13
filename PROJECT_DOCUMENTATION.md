@@ -22,10 +22,7 @@ ali/
 |-- visualization.py
 |-- ai_helper.py
 |-- requirements.txt
-|-- dataset.csv
-|-- car_data.csv
 |-- .env
-|-- AI_Analysis_Report.pdf
 |-- .gitignore
 |-- PROJECT_DOCUMENTATION.md
 ```
