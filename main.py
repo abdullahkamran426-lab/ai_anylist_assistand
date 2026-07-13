@@ -385,6 +385,87 @@ summary { font-weight: 600; color: var(--text) !important; }
 .next-card .n-icon { font-size: 1.3rem; margin-bottom: 6px; }
 .next-card .n-title { font-weight: 700; color: #fff; font-size: .9rem; margin-bottom: 3px; }
 .next-card .n-desc { color: var(--muted); font-size: .8rem; line-height: 1.5; }
+
+/* ── Explore pages: hero strip ── */
+.explore-hero {
+    background: linear-gradient(135deg, #1a1d27 0%, #1e2440 65%, #1a1d27 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px 30px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.explore-hero .eh-icon {
+    width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; box-shadow: 0 8px 20px rgba(99,102,241,.3);
+}
+.explore-hero .eh-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700; color: #fff; }
+.explore-hero .eh-sub { color: var(--muted); font-size: .84rem; margin-top: 2px; }
+
+/* ── Column chip grid (Dataset Preview → Column Details) ── */
+.col-chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.col-chip {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; transition: border-color .15s;
+}
+.col-chip:hover { border-color: var(--accent); }
+.col-chip .cc-name { font-weight: 700; color: #fff; font-size: .86rem; margin-bottom: 8px; word-break: break-all; }
+.col-chip .cc-type {
+    display: inline-block; font-size: .66rem; font-weight: 700; padding: 2px 9px;
+    border-radius: 99px; margin-bottom: 8px; letter-spacing: .03em; text-transform: uppercase;
+}
+.col-chip .cc-meta { color: var(--muted); font-size: .76rem; margin-top: 4px; }
+.col-chip .cc-bar { background: rgba(255,255,255,.07); border-radius: 99px; height: 4px; overflow: hidden; margin-top: 8px; }
+.col-chip .cc-bar-fill { height: 100%; border-radius: 99px; }
+.type-num  { background: rgba(99,102,241,.16); color: #818cf8; }
+.type-obj  { background: rgba(34,211,165,.16); color: #22d3a5; }
+.type-date { background: rgba(251,191,36,.16); color: #fbbf24; }
+.type-bool { background: rgba(248,113,113,.16); color: #f87171; }
+
+/* ── Stat / analysis cards ── */
+.stat-panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; margin-bottom: 18px;
+}
+.stat-panel h4 {
+    font-family: 'Space Grotesk', sans-serif; font-size: .98rem; font-weight: 700;
+    color: #fff; margin: 0 0 14px; display: flex; align-items: center; gap: 8px;
+}
+.vc-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.vc-label { width: 130px; flex-shrink: 0; font-size: .82rem; color: var(--text); word-break: break-all; }
+.vc-bar-track { flex: 1; background: rgba(255,255,255,.06); border-radius: 99px; height: 10px; overflow: hidden; }
+.vc-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+.vc-count { width: 64px; text-align: right; font-size: .78rem; color: var(--muted); flex-shrink: 0; }
+
+/* ── Segmented control (chart type picker) ── */
+[data-testid="stSegmentedControl"] {
+    background: var(--card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    padding: 4px !important;
+}
+[data-testid="stSegmentedControl"] label {
+    border-radius: 9px !important;
+    font-weight: 600 !important;
+    font-size: .88rem !important;
+    color: var(--muted) !important;
+}
+[data-testid="stSegmentedControl"] label[aria-checked="true"],
+[data-testid="stSegmentedControl"] label[data-checked="true"] {
+    background: linear-gradient(135deg, var(--accent), var(--accent2)) !important;
+    color: #fff !important;
+}
+
+/* ── Chart output card ── */
+.chart-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px 6px; margin-top: 4px;
+}
+.chart-card .cc-title { color: var(--muted); font-size: .8rem; font-weight: 600; margin-bottom: 4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -907,7 +988,16 @@ else:
 
     # ── Dataset Preview ──────────────────────────────────────────────────────
     if page == "🔍 Dataset Preview":
-        section("EXPLORE", "Dataset Preview")
+        st.markdown(f"""
+        <div class='explore-hero'>
+            <div class='eh-icon'>🔍</div>
+            <div>
+                <div class='eh-title'>Dataset Preview</div>
+                <div class='eh-sub'>{st.session_state.filename} · {df.shape[0]:,} rows · {df.shape[1]} columns</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Rows",          f"{df.shape[0]:,}")
         c2.metric("Columns",       df.shape[1])
@@ -916,22 +1006,64 @@ else:
 
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
 
-        with st.expander("Column types"):
-            dtype_df = df.dtypes.rename("Type").to_frame()
-            dtype_df["Nulls"] = df.isna().sum()
-            dtype_df["Unique"] = df.nunique()
-            st.dataframe(dtype_df, use_container_width=True)
+        tab_table, tab_cols = st.tabs(["📋 Data Table", "🧬 Column Details"])
 
-        st.dataframe(df, use_container_width=True, height=480)
+        with tab_table:
+            search = st.text_input("🔎 Search columns", placeholder="Type a column name to filter the view…")
+            shown_df = df
+            if search.strip():
+                matches = [c for c in df.columns if search.lower() in c.lower()]
+                if matches:
+                    shown_df = df[matches]
+                else:
+                    st.warning(f"No columns match '{search}'.")
+            st.dataframe(shown_df, use_container_width=True, height=460)
+
+        with tab_cols:
+            type_map = {"num": ("Numeric", "type-num"), "obj": ("Text", "type-obj"),
+                        "date": ("Date", "type-date"), "bool": ("Boolean", "type-bool")}
+            chips = []
+            for col in df.columns:
+                s = df[col]
+                if pd.api.types.is_bool_dtype(s):
+                    tkey = "bool"
+                elif pd.api.types.is_datetime64_any_dtype(s):
+                    tkey = "date"
+                elif pd.api.types.is_numeric_dtype(s):
+                    tkey = "num"
+                else:
+                    tkey = "obj"
+                label, css_class = type_map[tkey]
+                nulls = int(s.isna().sum())
+                pct_missing = round(nulls / len(df) * 100, 1) if len(df) else 0
+                uniq = int(s.nunique())
+                bar_color = "#f87171" if pct_missing > 20 else ("#fbbf24" if pct_missing > 0 else "#22d3a5")
+                chips.append(f"""
+                <div class='col-chip'>
+                    <div class='cc-name'>{col}</div>
+                    <span class='cc-type {css_class}'>{label}</span>
+                    <div class='cc-meta'>{uniq:,} unique · {nulls:,} missing ({pct_missing}%)</div>
+                    <div class='cc-bar'><div class='cc-bar-fill' style='width:{max(pct_missing,2)}%;background:{bar_color}'></div></div>
+                </div>
+                """)
+            st.markdown(f"<div class='col-chip-grid'>{''.join(chips)}</div>", unsafe_allow_html=True)
 
     # ── Statistics ───────────────────────────────────────────────────────────
     elif page == "📊 Statistics":
-        section("ANALYSIS", "Statistical Summary")
+        st.markdown(f"""
+        <div class='explore-hero'>
+            <div class='eh-icon'>📊</div>
+            <div>
+                <div class='eh-title'>Statistical Summary</div>
+                <div class='eh-sub'>Numeric distributions, missing data and category breakdowns</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         sample_analysis = False
         if len(df) > LARGE_DF_THRESHOLD:
             sample_analysis = st.checkbox(
-                "Sample for speed",
+                "⚡ Sample for speed",
                 value=True,
                 help="Use a smaller sample for statistics and charts on large datasets.",
             )
@@ -940,27 +1072,30 @@ else:
         if len(analysis_df) != len(df):
             st.info(f"Using {len(analysis_df):,} sampled rows for this analysis.")
 
-        tabs = st.tabs(["Numeric Stats", "Missing Values", "Value Counts"])
+        tabs = st.tabs(["📐 Numeric Stats", "❓ Missing Values", "🏷️ Value Counts"])
 
         with tabs[0]:
             stats = get_numeric_stats(analysis_df)
             if stats is not None and not stats.empty:
-                st.markdown("#### Numeric stats")
+                st.markdown("<div class='stat-panel'><h4>📐 Summary statistics</h4>", unsafe_allow_html=True)
                 st.dataframe(stats, use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-                st.markdown("#### Visualize a column")
+                st.markdown("<div class='stat-panel'><h4>📈 Visualize a column</h4>", unsafe_allow_html=True)
                 stat_cols = stats.columns.tolist()
                 chosen_stat = st.radio(
                     "Select column to visualize",
                     stat_cols,
                     horizontal=True,
                     key="stats_chart_pick",
+                    label_visibility="collapsed",
                 )
-                if st.button("📈 Visualize this column", key="go_visualize"):
+                if st.button("📈 Visualize this column →", key="go_visualize"):
                     st.session_state.selected_chart_column = chosen_stat
                     st.session_state.selected_chart_type = "📈 Histogram"
                     st.session_state.redirect_to = "📈 Visualizations"
                     st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
             else:
                 st.info("No numeric columns found.")
 
@@ -968,6 +1103,26 @@ else:
             miss = analysis_df.isna().sum().rename("Missing").to_frame()
             miss["Pct (%)"] = (miss["Missing"] / len(analysis_df) * 100).round(2)
             miss = miss.sort_values("Missing", ascending=False)
+
+            total_missing = int(miss["Missing"].sum())
+            st.markdown(f"""
+            <div class='stat-panel'>
+                <h4>❓ Missing values {"— none found 🎉" if total_missing == 0 else f"— {total_missing:,} cells across {int((miss['Missing']>0).sum())} column(s)"}</h4>
+            """, unsafe_allow_html=True)
+            if total_missing > 0:
+                max_missing = max(int(miss["Missing"].max()), 1)
+                rows_html = ""
+                for col, row in miss[miss["Missing"] > 0].iterrows():
+                    width = max(row["Missing"] / max_missing * 100, 2)
+                    rows_html += f"""
+                    <div class='vc-row'>
+                        <div class='vc-label'>{col}</div>
+                        <div class='vc-bar-track'><div class='vc-bar-fill' style='width:{width}%;background:linear-gradient(90deg,#f87171,#fbbf24)'></div></div>
+                        <div class='vc-count'>{int(row['Missing']):,} ({row['Pct (%)']}%)</div>
+                    </div>
+                    """
+                st.markdown(rows_html, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
             st.dataframe(miss, use_container_width=True)
 
         with tabs[2]:
@@ -976,27 +1131,58 @@ else:
                 chosen = st.selectbox("Column", cat_cols)
                 vc = df[chosen].value_counts().rename("Count").to_frame()
                 vc["Pct (%)"] = (vc["Count"] / len(df) * 100).round(2)
+
+                st.markdown(f"<div class='stat-panel'><h4>🏷️ Top values in '{chosen}'</h4>", unsafe_allow_html=True)
+                top = vc.head(10)
+                max_count = int(top["Count"].max()) if not top.empty else 1
+                rows_html = ""
+                for label, row in top.iterrows():
+                    width = max(row["Count"] / max_count * 100, 2)
+                    rows_html += f"""
+                    <div class='vc-row'>
+                        <div class='vc-label'>{label}</div>
+                        <div class='vc-bar-track'><div class='vc-bar-fill' style='width:{width}%'></div></div>
+                        <div class='vc-count'>{int(row['Count']):,} ({row['Pct (%)']}%)</div>
+                    </div>
+                    """
+                st.markdown(rows_html, unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
                 st.dataframe(vc, use_container_width=True)
             else:
                 st.info("No categorical columns found.")
 
     # ── Visualizations ───────────────────────────────────────────────────────
     elif page == "📈 Visualizations":
-        section("CHARTS", "Visualizations")
+        st.markdown(f"""
+        <div class='explore-hero'>
+            <div class='eh-icon'>📈</div>
+            <div>
+                <div class='eh-title'>Visualizations</div>
+                <div class='eh-sub'>Bar, histogram, pie and scatter charts — powered by Plotly</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         nums = df.select_dtypes(include="number").columns.tolist()
         cats = df.select_dtypes(exclude="number").columns.tolist()
 
         default_chart = st.session_state.selected_chart_type or "📊 Bar"
-        chart = st.segmented_control(
-            "Chart type",
-            ["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"],
-            default=default_chart,
-        ) if hasattr(st, "segmented_control") else st.radio(
-            "Chart type", ["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"],
-            horizontal=True,
-            index=["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"].index(default_chart),
-        )
+        chart_options = ["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"]
+        if hasattr(st, "segmented_control"):
+            try:
+                chart = st.segmented_control(
+                    "Chart type", chart_options, default=default_chart,
+                    label_visibility="collapsed",
+                )
+            except TypeError:
+                chart = st.segmented_control("Chart type", chart_options, default=default_chart)
+        else:
+            chart = st.radio(
+                "Chart type", chart_options, horizontal=True,
+                index=chart_options.index(default_chart),
+                label_visibility="collapsed",
+            )
 
         preselect_col = st.session_state.selected_chart_column
         # Consume the one-time preselection so later visits start fresh.
@@ -1005,24 +1191,53 @@ else:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        if "Bar" in chart and cats:
-            idx = cats.index(preselect_col) if preselect_col in cats else 0
-            c = st.selectbox("Category column", cats, index=idx)
-            st.plotly_chart(plot_bar(df, c), use_container_width=True)
-        elif "Histogram" in chart and nums:
-            idx = nums.index(preselect_col) if preselect_col in nums else 0
-            c = st.selectbox("Numeric column", nums, index=idx)
-            st.plotly_chart(plot_histogram(df, c), use_container_width=True)
-        elif "Pie" in chart and cats:
-            idx = cats.index(preselect_col) if preselect_col in cats else 0
-            c = st.selectbox("Category column", cats, index=idx)
-            st.plotly_chart(plot_pie(df, c), use_container_width=True)
-        elif "Scatter" in chart and len(nums) >= 2:
-            x_col = st.selectbox("X axis", nums)
-            y_col = st.selectbox("Y axis", nums, index=1)
-            st.plotly_chart(plot_scatter(df, x_col, y_col), use_container_width=True)
-        else:
-            st.info("Not enough columns of the required type for this chart.")
+        chart_titles = {
+            "📊 Bar": "Bar chart — category frequency",
+            "📈 Histogram": "Histogram — value distribution",
+            "🥧 Pie": "Pie chart — category share",
+            "📉 Scatter": "Scatter plot — relationship between two variables",
+        }
+
+        picker_col, chart_col = st.columns([1, 2.4], gap="large")
+
+        with picker_col:
+            st.markdown("<div class='stat-panel'><h4>⚙️ Chart settings</h4>", unsafe_allow_html=True)
+            selected_col = None
+            x_col = y_col = None
+            if "Bar" in chart and cats:
+                idx = cats.index(preselect_col) if preselect_col in cats else 0
+                selected_col = st.selectbox("Category column", cats, index=idx)
+            elif "Histogram" in chart and nums:
+                idx = nums.index(preselect_col) if preselect_col in nums else 0
+                selected_col = st.selectbox("Numeric column", nums, index=idx)
+            elif "Pie" in chart and cats:
+                idx = cats.index(preselect_col) if preselect_col in cats else 0
+                selected_col = st.selectbox("Category column", cats, index=idx)
+            elif "Scatter" in chart and len(nums) >= 2:
+                x_col = st.selectbox("X axis", nums)
+                y_col = st.selectbox("Y axis", nums, index=1)
+            else:
+                st.caption("Not enough columns of the required type for this chart.")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with chart_col:
+            st.markdown(f"""
+            <div class='chart-card'>
+                <div class='cc-title'>{chart_titles.get(chart, '')}</div>
+            """, unsafe_allow_html=True)
+
+            if "Bar" in chart and cats and selected_col:
+                st.plotly_chart(plot_bar(df, selected_col), use_container_width=True)
+            elif "Histogram" in chart and nums and selected_col:
+                st.plotly_chart(plot_histogram(df, selected_col), use_container_width=True)
+            elif "Pie" in chart and cats and selected_col:
+                st.plotly_chart(plot_pie(df, selected_col), use_container_width=True)
+            elif "Scatter" in chart and x_col and y_col:
+                st.plotly_chart(plot_scatter(df, x_col, y_col), use_container_width=True)
+            else:
+                st.info("Not enough columns of the required type for this chart.")
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # ── AI Assistant ─────────────────────────────────────────────────────────
     elif page == "🤖 AI Assistant":
