@@ -251,6 +251,8 @@ for key, default in {
     "cached_summary": None,
     "history": [],
     "selected_chart_column": None,
+    "selected_chart_type": None,
+    "redirect_to": None,
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -317,6 +319,9 @@ def auto_clean_pipeline(df):
     return df, log
  
 # ── Sidebar ────────────────────────────────────────────────────────────────────
+if st.session_state.redirect_to:
+    st.session_state.page = st.session_state.redirect_to
+    st.session_state.redirect_to = None
 with st.sidebar:
     st.markdown("""
     <div style='padding:12px 0 20px'>
@@ -789,7 +794,7 @@ else:
                     if chosen_stat:
                         st.session_state.selected_chart_column = chosen_stat
                         st.session_state.selected_chart_type = "📈 Histogram"
-                        st.session_state.page = "📈 Visualizations"
+                        st.session_state.redirect_to = "📈 Visualizations"
                         st.experimental_rerun()
                 st.dataframe(stats, use_container_width=True)
             else:
