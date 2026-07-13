@@ -35,11 +35,9 @@ ali/
 - `ai_helper.py`: OpenRouter/OpenAI client initialization and AI question-answering logic.
 - `requirements.txt`: Python dependencies required for the application.
 
-### Data and Environment Files
+### Environment File
 
-- `dataset.csv`, `car_data.csv`: Sample CSV datasets that can be uploaded into the app.
 - `.env`: Environment variables, typically storing `OPENROUTER_API_KEY`.
-- `AI_Analysis_Report.pdf`: Example output artifact that the app can generate.
 
 ## 3. Module Summaries and Function Documentation
 
