@@ -1,300 +1,257 @@
-# Project Documentation
+<div align="center">
 
-## 1. Project Overview
+# ✦ PROJECT OVERVIEW
 
-This repository contains a Streamlit-based web application for interactive CSV data analysis. The app is designed to let users:
+### Data Analysis Assistant
 
-- Upload a CSV dataset.
-- Clean and inspect the dataset.
-- View summary statistics and missing-value analysis.
-- Build interactive Plotly charts.
-- Ask an AI assistant questions about the dataset.
-- Export AI-generated insights to a PDF report.
+<p>
+  Upload any CSV dataset and transform it into interactive visualizations,<br/>
+  statistical summaries, and AI-generated insights — all in minutes.
+</p>
 
-The codebase is organized as a modular Streamlit application with helper modules responsible for data processing, visualization, AI integration, and report generation.
+[![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white)](#)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.x-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)](#)
+[![Plotly](https://img.shields.io/badge/Plotly-Interactive-3F4F75?style=flat-square&logo=plotly&logoColor=white)](#)
+[![OpenRouter](https://img.shields.io/badge/AI-OpenRouter-7C5CFC?style=flat-square)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)](#)
+
+</div>
 
 ---
 
-## 2. Repository Structure
+## 📌 Overview
+
+**DataMind AI** is a modular Streamlit web application for interactive CSV data exploration.  
+It combines automated cleaning, Plotly visualizations, descriptive statistics, and a natural-language AI assistant — all accessible through a clean, sidebar-navigated interface.
+
+> **Stack:** Python · Streamlit · Pandas · Plotly · OpenRouter (Llama 3.1) · FPDF
+
+---
+
+## ✨ Features
+
+|  | Feature | Description |
+|:---:|:---|:---|
+| 📤 | **CSV Upload** | Drag-and-drop any `.csv` file; encoding fallbacks handled automatically |
+| 🧹 | **Auto-Clean** | Deduplication, missing-value detection, and type normalization |
+| 👁 | **Dataset Preview** | Full table view with row, column, and missing value summary |
+| 📊 | **Statistics** | Numeric `describe()`, per-column missing values, and categorical counts |
+| 📈 | **Visualizations** | Bar, Histogram, Pie, and Scatter plots powered by Plotly |
+| 🤖 | **AI Assistant** | Ask natural-language questions via Llama 3.1 8B on OpenRouter |
+| 📄 | **PDF Export** | Download AI-generated analysis as a professional PDF report |
+
+---
+
+## 🗂 Repository Structure
 
 ```text
 ali/
-|-- main.py
-|-- analysis.py
-|-- visualization.py
-|-- ai_helper.py
-|-- requirements.txt
-|-- .env
-|-- .gitignore
-|-- README.md
-```
-
-### Source Files
-
-- `main.py`: Streamlit application entrypoint, page routing, UI controls, and integration with helper modules.
-- `analysis.py`: Data loading, cleaning, summary generation, statistics helpers, and PDF export.
-- `visualization.py`: Plotly figure generation for bar charts, histograms, pie charts, and scatter plots.
-- `ai_helper.py`: OpenRouter/OpenAI client initialization and AI question-answering logic.
-- `requirements.txt`: Python dependencies required for the application.
-
-### Environment File
-
-- `.env`: Environment variables, typically storing `OPENROUTER_API_KEY`.
-
----
-
-# 3. Project Workflow
-
-## Workflow Summary
-
-The application follows a modular workflow that transforms a raw CSV dataset into AI-powered insights. After a CSV file is uploaded, it is loaded, cleaned, and stored in Streamlit Session State so that all modules share the same dataset. Users can then clean and explore the data, generate statistics, build interactive visualizations, ask questions through the AI assistant, and finally export the generated insights as a PDF report. This architecture keeps the application organized, efficient, and easy to maintain.
-
-## Workflow Diagram
-
-```text
-User
- │
- ▼
-Launch Streamlit Application
- │
- ▼
-main.py Initializes Application
- │
- ├── Load CSS & UI
- ├── Initialize Session State
- ├── Create Sidebar Navigation
- └── Wait for User Input
- │
- ▼
-Upload CSV Dataset
- │
- ▼
-analysis.load_data()
- │
- ▼
-Read CSV using Pandas
- │
- ▼
-analysis.clean_data()
- │
- ▼
-Basic Data Cleaning
- │
- ▼
-Store DataFrame in st.session_state
- │
- ├──────────────────────────────┐
- │                              │
- ▼                              ▼
-Clean Data                  Dataset Preview
- │                              │
- ▼                              ▼
-Update DataFrame          View Dataset
- │                              │
- └──────────────┬───────────────┘
-                │
-                ▼
-          Statistics Module
-                │
-                ▼
-      Generate Summary Statistics
-                │
-                ▼
-        Visualization Module
-                │
-                ▼
- Create Interactive Plotly Charts
-                │
-                ▼
-          AI Assistant Module
-                │
-                ▼
-analysis.get_summary()
-                │
-                ▼
-Create Dataset Summary
-                │
-                ▼
-User Question + Dataset Summary
-                │
-                ▼
-ai_helper.ask_ai()
-                │
-                ▼
-OpenRouter API
-                │
-                ▼
-Llama 3.1 8B Model
-                │
-                ▼
-AI Generated Answer
-                │
-                ▼
-Store Response in Session State
-                │
-                ▼
-Export Module
-                │
-                ▼
-analysis.export_to_pdf()
-                │
-                ▼
-Generate AI_Analysis_Report.pdf
-                │
-                ▼
-Download Report
+├── main.py              # App entrypoint — routing, UI, session state
+├── analysis.py          # Data loading, cleaning, statistics, PDF export
+├── visualization.py     # Plotly chart generators
+├── ai_helper.py         # OpenRouter AI client and question handler
+├── requirements.txt     # Python dependencies
+├── .env                 # API key (not committed)
+├── .gitignore
+└── README.md
 ```
 
 ---
 
+## 🚀 Getting Started
 
-## 4. Module Summaries and Function Documentation
+### 1 · Clone the Repository
 
-### `main.py`
+```bash
+git clone https://github.com/abdullahkamran426-lab/ai_anylist_assistand.git
+cd datamind-ai
+```
 
-#### Role
-
-Acts as the application controller and Streamlit UI definition. It:
-
-- Configures the page layout and style.
-- Builds the sidebar navigation.
-- Initializes session state values.
-- Handles dataset upload and cleaning workflow.
-- Presents preview, statistics, visualizations, AI assistant, and export pages.
-
-#### Major Functional Areas
-
-- `Home`: App introduction and feature overview.
-- `Upload Dataset`: Accepts CSV upload, reads the file, cleans it, and stores it in session state.
-- `Clean Data`: Provides interactive cleaning controls for duplicate removal, missing values, dropping/renaming columns, type casting, and filters.
-- `Dataset Preview`: Displays the full dataset, column dtypes, missing counts, and duplicates.
-- `Statistics`: Shows numeric statistics, missing values, and categorical value counts.
-- `Visualizations`: Renders selected Plotly charts based on dataset columns.
-- `AI Assistant`: Sends a dataset summary and user question to the AI helper.
-- `Export Report`: Generates a PDF from the AI response and offers it for download.
-- `About`: Describes the app and its feature set.
-
-#### Dependencies
-
-- Imports from `analysis.py`, `visualization.py`, and `ai_helper.py`.
-- Uses Streamlit for layout and interactive controls.
-
-### `analysis.py`
-
-#### Role
-
-Provides reusable data-processing utilities and export capabilities.
-
-#### Functions
-
-- `load_data(uploaded_file)`
-  - Reads a CSV file with fallback encodings: `utf-8`, `cp1252`, and `latin1`.
-  - Uses `@st.cache_data` to cache loaded datasets in Streamlit sessions.
-
-- `clean_data(df)`
-  - Specifically cleans a `Gross` column by removing commas and converting values to numeric.
-  - Returns the cleaned DataFrame.
-
-- `get_summary(df, filename)`
-  - Builds a textual summary of the dataset with filename, row/column counts, column names, dtypes, first rows, and descriptive statistics.
-  - This summary is used to prompt the AI assistant.
-
-- `get_numeric_stats(df)`
-  - Selects numeric columns and returns `DataFrame.describe()`.
-  - Returns `None` if there are no numeric columns.
-
-- `get_category_counts(df, col)`
-  - Returns `value_counts()` for a selected categorical column.
-  - Currently not used directly by `main.py`, but available as a helper.
-
-- `export_to_pdf(text_content, filename="AI_Analysis_Report.pdf")`
-  - Writes the AI-generated response text to a PDF using FPDF.
-  - Removes non-ASCII characters before writing to avoid FPDF encoding issues.
-
-### `visualization.py`
-
-#### Role
-
-Contains chart-generation helpers that return Plotly figure objects.
-
-#### Functions
-
-- `plot_bar(df, col)`
-  - Creates a bar chart from the top 15 value counts of a categorical column.
-  - Returns a Plotly bar figure.
-
-- `plot_histogram(df, col)`
-  - Creates a histogram for a numeric column with 30 bins.
-  - Returns a Plotly histogram figure.
-
-- `plot_pie(df, col)`
-  - Creates a pie chart for the top 8 categories in a categorical column.
-  - Returns a Plotly pie figure.
-
-- `plot_scatter(df, x_col, y_col)`
-  - Creates a scatter plot for two numeric columns.
-  - Returns a Plotly scatter figure.
-
-### `ai_helper.py`
-
-#### Role
-
-Handles AI client initialization and dataset question answering.
-
-#### Behavior
-
-- Loads environment variables from `.env` using `load_dotenv()`.
-- Reads `OPENROUTER_API_KEY` and initializes an `OpenAI` client if available.
-- If the API key is missing, sets `client = None` and returns a helpful missing-key message.
-
-#### Functions
-
-- `ask_ai(question, dataset_summary)`
-  - Sends a chat completion request to the OpenRouter-backed model.
-  - Uses the model `meta-llama/llama-3.1-8b-instruct`.
-  - Sets `max_tokens=500` and `temperature=0.3`.
-  - Returns the AI response or an error string if a failure occurs.
-
-## 5. Dependency Notes
-
-### Required Libraries
-
-From `requirements.txt`:
-
-- `pandas`
-- `numpy`
-- `matplotlib` (not currently used in code)
-- `seaborn` (not currently used in code)
-- `plotly`
-- `fpdf`
-- `python-dotenv`
-- `streamlit`
-- `openai`
-
-### Observations
-
-- `matplotlib` and `seaborn` are installed but not referenced by the current source files.
-- The AI flow is optional if `OPENROUTER_API_KEY` is not configured.
-
-## 6. Running the App
-
-### Setup
+### 2 · Create & Activate a Virtual Environment
 
 ```powershell
+# Windows (PowerShell)
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+```
+
+```bash
+# macOS / Linux
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 3 · Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### Environment
+### 4 · Configure the Environment
 
-Create a `.env` file containing:
+Create a `.env` file in the project root:
 
 ```env
-OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 ```
 
-### Launch
+> 🔑 Get your free API key at [openrouter.ai/keys](https://openrouter.ai/keys)
 
-```powershell
+### 5 · Launch the App
+
+```bash
 streamlit run main.py
 ```
+
+The app will open at `http://localhost:8501`.
+
+---
+
+## 🔄 Application Workflow
+
+```mermaid
+flowchart TD
+    A([👤 User]) --> B[Launch Streamlit App]
+    B --> C{Sidebar Navigation}
+
+    C --> D[📤 Upload CSV]
+    D --> E["load_data() — encoding fallback"]
+    E --> F["clean_data() — normalize types"]
+    F --> G[(📦 Session State — DataFrame)]
+
+    G --> H[👁 Dataset Preview]
+    G --> I[📊 Statistics]
+    G --> J[📈 Visualizations]
+    G --> K[🤖 AI Assistant]
+
+    I  --> I1["get_numeric_stats()"]
+    J  --> J1["plot_bar / plot_histogram / plot_pie / plot_scatter"]
+
+    K  --> L["get_summary()"]
+    L  --> M["ask_ai() → OpenRouter API"]
+    M  --> N["Llama 3.1 8B — Response"]
+    N  --> O[(💾 session_state.answer)]
+
+    O  --> P[📄 Export Report]
+    P  --> Q["export_to_pdf()"]
+    Q  --> R([⬇ Download PDF])
+
+    style A  fill:#7C5CFC,color:#fff,stroke:none
+    style G  fill:#1C2435,color:#DCE4F0,stroke:#2D3A52
+    style O  fill:#1C2435,color:#DCE4F0,stroke:#2D3A52
+    style R  fill:#00D68F,color:#fff,stroke:none
+```
+
+---
+
+## 🧩 Module Reference
+
+<details>
+<summary><strong>📄 main.py — Application Controller</strong></summary>
+<br/>
+
+Handles all page routing, session-state initialization, and UI rendering. Integrates with all helper modules.
+
+| Page | Purpose |
+|:---|:---|
+| Home | App introduction and feature overview |
+| Upload Dataset | CSV upload, encoding handling, cleaning, session storage |
+| Dataset Preview | Full table view, column types, missing value counts |
+| Statistics | Numeric stats, missing analysis, categorical counts |
+| Visualizations | Interactive Plotly chart builder |
+| AI Assistant | Natural-language question answering |
+| Export Report | AI-response PDF generation and download |
+| About | App description and technology stack |
+
+</details>
+
+<details>
+<summary><strong>🔧 analysis.py — Data & Export Utilities</strong></summary>
+<br/>
+
+| Function | Signature | Description |
+|:---|:---|:---|
+| `load_data` | `(uploaded_file)` | Reads CSV with encoding fallbacks (`utf-8` → `cp1252` → `latin1`). Cached with `@st.cache_data`. |
+| `clean_data` | `(df)` | Strips commas from `Gross` column and casts it to numeric. Returns cleaned DataFrame. |
+| `get_summary` | `(df, filename)` | Builds a text snapshot (filename, shape, dtypes, head, describe) for the AI prompt. |
+| `get_numeric_stats` | `(df)` | Returns `df.describe()` for numeric columns, or `None` if none exist. |
+| `get_category_counts` | `(df, col)` | Returns `value_counts()` for a given categorical column. |
+| `export_to_pdf` | `(text, filename)` | Writes AI response to a PDF via FPDF, stripping non-ASCII characters first. |
+
+</details>
+
+<details>
+<summary><strong>📈 visualization.py — Chart Generators</strong></summary>
+<br/>
+
+All functions return a **Plotly figure object** ready for `st.plotly_chart()`.
+
+| Function | Chart Type | Notes |
+|:---|:---|:---|
+| `plot_bar(df, col)` | Bar chart | Top 15 value counts of a categorical column |
+| `plot_histogram(df, col)` | Histogram | 30 bins across a numeric column |
+| `plot_pie(df, col)` | Pie chart | Top 8 categories of a categorical column |
+| `plot_scatter(df, x, y)` | Scatter plot | Two numeric columns on X and Y axes |
+
+</details>
+
+<details>
+<summary><strong>🤖 ai_helper.py — AI Integration</strong></summary>
+<br/>
+
+| Setting | Value |
+|:---|:---|
+| Provider | OpenRouter (OpenAI-compatible API) |
+| Model | `meta-llama/llama-3.1-8b-instruct` |
+| `max_tokens` | `500` |
+| `temperature` | `0.3` |
+| Fallback | Returns a descriptive error string if the API key is missing or a request fails |
+
+**`ask_ai(question, dataset_summary)`**  
+Sends a combined prompt — dataset context and user question — to the model and returns the generated response string.
+
+</details>
+
+---
+
+## 📦 Dependencies
+
+| Library | Purpose | Active |
+|:---|:---|:---:|
+| `streamlit` | Web UI framework | ✅ |
+| `pandas` | Data loading and manipulation | ✅ |
+| `plotly` | Interactive chart rendering | ✅ |
+| `fpdf` | PDF report generation | ✅ |
+| `openai` | OpenRouter-compatible AI client | ✅ |
+| `python-dotenv` | `.env` variable loading | ✅ |
+| `numpy` | Numeric utilities | ✅ |
+| `matplotlib` | Installed — not yet wired | ⬜ |
+| `seaborn` | Installed — not yet wired | ⬜ |
+
+---
+
+## ⚙️ Configuration Reference
+
+| Variable | File | Description |
+|:---|:---|:---|
+| `OPENROUTER_API_KEY` | `.env` | Your OpenRouter API key — required for the AI assistant |
+
+---
+
+## 📝 Notes
+
+- The **AI assistant is optional** — all other features work without an API key configured.
+- `clean_data()` currently targets a `Gross` column specifically. Extend it in `analysis.py` for your dataset's structure.
+- `matplotlib` and `seaborn` are in `requirements.txt` but not yet wired to any charts — swap Plotly functions in `visualization.py` if you prefer them.
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License** — see [`LICENSE`](LICENSE) for details.
+
+---
+
+<div align="center">
+  Built with 🐍 Python &nbsp;·&nbsp; ⚡ Streamlit &nbsp;·&nbsp; 🤖 OpenRouter
+</div>
