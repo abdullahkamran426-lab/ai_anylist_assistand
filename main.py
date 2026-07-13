@@ -1,4 +1,6 @@
 from pathlib import Path
+import hashlib
+import io
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -246,9 +248,73 @@ for key, default in {
     "filename": None,
     "answer": None,
     "clean_log": [],
+    "cached_summary": None,
+    "history": [],
+    "selected_chart_column": None,
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
+
+LARGE_DF_THRESHOLD = 100_000
+SAMPLE_SIZE = 10_000
+
+def push_history(df):
+    """Keep a short undo history for data mutations."""
+    if "history" not in st.session_state or st.session_state.history is None:
+        st.session_state.history = []
+    st.session_state.history.append(df.copy())
+    if len(st.session_state.history) > 20:
+        st.session_state.history = st.session_state.history[-20:]
+
+
+def sample_df_for_speed(df, use_sample: bool):
+    """Return a sampled DataFrame when the dataset is large and speed mode enabled."""
+    if use_sample and len(df) > LARGE_DF_THRESHOLD:
+        return df.sample(n=min(SAMPLE_SIZE, len(df)), random_state=42)
+    return df
+
+
+def detect_type_suggestions(df):
+    """Identify object columns that likely contain numeric or datetime values."""
+    suggestions = []
+    for col in df.columns:
+        if df[col].dtype == object:
+            nonnull = df[col].dropna().astype(str)
+            if len(nonnull) == 0:
+                continue
+            sample = nonnull.sample(n=min(300, len(nonnull)), random_state=42)
+            numeric_ratio = sample.str.match(r'^[-+]?\d*\.?\d+$').mean()
+            if numeric_ratio > 0.9:
+                suggestions.append((col, "numeric"))
+                continue
+            parsed = pd.to_datetime(sample, errors="coerce")
+            if parsed.notna().mean() > 0.85:
+                suggestions.append((col, "datetime"))
+    return suggestions
+
+
+def auto_clean_pipeline(df):
+    """Apply a standard auto-clean pipeline to the dataframe."""
+    df = df.copy()
+    log = []
+    dup_count = int(df.duplicated().sum())
+    if dup_count > 0:
+        df = df.drop_duplicates().reset_index(drop=True)
+        log.append(f"✅ Removed {dup_count} duplicate rows")
+
+    for col in df.columns:
+        if df[col].isna().any():
+            if pd.api.types.is_numeric_dtype(df[col]):
+                median_val = df[col].median()
+                df[col] = df[col].fillna(median_val)
+                log.append(f"✅ Filled '{col}' nulls with median ({median_val:.4g})")
+            else:
+                mode_vals = df[col].mode(dropna=True)
+                if not mode_vals.empty:
+                    mode_val = mode_vals.iloc[0]
+                    df[col] = df[col].fillna(mode_val)
+                    log.append(f"✅ Filled '{col}' nulls with mode ({mode_val})")
+    return df, log
  
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -270,6 +336,7 @@ with st.sidebar:
          "📈 Visualizations", "🤖 AI Assistant",
          "📄 Export Report", "ℹ️ About"],
         label_visibility="collapsed",
+        key="page",
     )
  
     # Dataset status badge
@@ -377,15 +444,18 @@ elif page == "📂 Upload Dataset":
     )
  
     if uploaded:
+        raw_bytes = uploaded.getvalue()
         with st.spinner("Reading and auto-cleaning…"):
-            raw_df = load_data(uploaded)
+            raw_df = load_data(raw_bytes)
             df = clean_data(raw_df)
- 
+
         st.session_state.df = df
         st.session_state.original_df = df.copy()
         st.session_state.filename = uploaded.name
         st.session_state.clean_log = ["✅ Initial auto-clean applied (whitespace stripped, obvious duplicates removed)"]
- 
+        st.session_state.cached_summary = None
+        st.session_state.file_hash = hashlib.md5(raw_bytes).hexdigest()
+        st.session_state.history = [df.copy()]
         st.success(f"**{uploaded.name}** loaded — {df.shape[0]:,} rows × {df.shape[1]} columns")
  
         c1, c2, c3, c4 = st.columns(4)
@@ -434,8 +504,10 @@ elif page == "🧹 Clean Data":
                     f"{'⚠️ ' if dup_count else '✅ '}{dup_count} duplicate{'s' if dup_count!=1 else ''}</span>",
                     unsafe_allow_html=True)
         if dup_count and st.button("Remove duplicates", key="rm_dup"):
+            push_history(df)
             df = df.drop_duplicates().reset_index(drop=True)
             st.session_state.df = df
+            st.session_state.cached_summary = None
             st.session_state.clean_log.append(f"✅ Removed {dup_count} duplicate rows")
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -461,6 +533,7 @@ elif page == "🧹 Clean Data":
                 mv_const = st.text_input("Constant value", key="mv_const")
  
             if st.button("Apply", key="apply_mv"):
+                push_history(df)
                 col_data = df[mv_col]
                 before   = int(col_data.isna().sum())
                 if mv_strat == "Drop rows":
@@ -486,27 +559,84 @@ elif page == "🧹 Clean Data":
                 else:
                     msg = "⚠️ Strategy not applicable to column type — skipped."
                 st.session_state.df = df
+                st.session_state.cached_summary = None
                 st.session_state.clean_log.append(msg)
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
  
-        # 3. Drop columns
+        # 3. Auto-clean + persist download
+        st.markdown("<div class='clean-panel'><h4>⚡ Auto-clean & Download</h4>", unsafe_allow_html=True)
+        if st.button("Run Auto-clean", key="auto_clean"):
+            push_history(df)
+            df, auto_log = auto_clean_pipeline(df)
+            st.session_state.df = df
+            st.session_state.cached_summary = None
+            st.session_state.clean_log.extend(auto_log)
+            st.session_state.clean_log.append("✅ Auto-clean pipeline applied")
+            st.rerun()
+
+        csv_bytes = df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "Download cleaned CSV",
+            csv_bytes,
+            file_name=f"cleaned_{st.session_state.filename or 'dataset'}.csv",
+            mime="text/csv",
+            key="download_cleaned_csv",
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # 4. Drop columns
         st.markdown("<div class='clean-panel'><h4>🗑️ Drop Columns</h4>", unsafe_allow_html=True)
         drop_cols = st.multiselect("Select columns to drop", df.columns.tolist(), key="drop_cols")
         if drop_cols and st.button("Drop selected", key="apply_drop"):
+            push_history(df)
             df = df.drop(columns=drop_cols)
             st.session_state.df = df
+            st.session_state.cached_summary = None
             st.session_state.clean_log.append(f"✅ Dropped columns: {', '.join(drop_cols)}")
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
  
-        # 4. Rename column
+        # 4. Type suggestions
+        st.markdown("<div class='clean-panel'><h4>🔧 Type Suggestions</h4>", unsafe_allow_html=True)
+        type_suggestions = detect_type_suggestions(df)
+        if type_suggestions:
+            for col, suggestion in type_suggestions:
+                col_label = f"{col} → {suggestion}"
+                if st.button(f"Fix type: {col_label}", key=f"fix_{col}"):
+                    push_history(df)
+                    if suggestion == "numeric":
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                    else:
+                        df[col] = pd.to_datetime(df[col], errors="coerce")
+                    st.session_state.df = df
+                    st.session_state.cached_summary = None
+                    st.session_state.clean_log.append(f"✅ Fixed type for '{col}' to {suggestion}")
+                    st.rerun()
+            if st.button("Fix all suggested types", key="fix_all_types"):
+                push_history(df)
+                for col, suggestion in type_suggestions:
+                    if suggestion == "numeric":
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                    else:
+                        df[col] = pd.to_datetime(df[col], errors="coerce")
+                    st.session_state.clean_log.append(f"✅ Fixed type for '{col}' to {suggestion}")
+                st.session_state.df = df
+                st.session_state.cached_summary = None
+                st.rerun()
+        else:
+            st.markdown("<span class='pill pill-green'>No suggested type fixes detected.</span>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # 5. Rename column
         st.markdown("<div class='clean-panel'><h4>✏️ Rename Column</h4>", unsafe_allow_html=True)
         ren_from = st.selectbox("Column to rename", df.columns.tolist(), key="ren_from")
         ren_to   = st.text_input("New name", key="ren_to")
         if st.button("Rename", key="apply_rename") and ren_to:
+            push_history(df)
             df = df.rename(columns={ren_from: ren_to})
             st.session_state.df = df
+            st.session_state.cached_summary = None
             st.session_state.clean_log.append(f"✅ Renamed '{ren_from}' → '{ren_to}'")
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -516,12 +646,14 @@ elif page == "🧹 Clean Data":
         cast_col   = st.selectbox("Column", df.columns.tolist(), key="cast_col")
         cast_dtype = st.selectbox("Target type", ["int", "float", "str", "datetime"], key="cast_dtype")
         if st.button("Cast", key="apply_cast"):
+            push_history(df)
             try:
                 if cast_dtype == "datetime":
                     df[cast_col] = pd.to_datetime(df[cast_col], errors="coerce")
                 else:
                     df[cast_col] = df[cast_col].astype(cast_dtype)
                 st.session_state.df = df
+                st.session_state.cached_summary = None
                 st.session_state.clean_log.append(f"✅ Cast '{cast_col}' to {cast_dtype}")
             except Exception as exc:
                 st.error(f"Could not cast: {exc}")
@@ -536,10 +668,12 @@ elif page == "🧹 Clean Data":
             flt_op  = st.selectbox("Operator", [">", ">=", "<", "<=", "==", "!="], key="flt_op")
             flt_val = st.number_input("Value", key="flt_val")
             if st.button("Apply filter", key="apply_flt"):
+                push_history(df)
                 before = len(df)
                 expr   = f"`{flt_col}` {flt_op} {flt_val}"
                 df     = df.query(expr).reset_index(drop=True)
                 st.session_state.df = df
+                st.session_state.cached_summary = None
                 st.session_state.clean_log.append(
                     f"✅ Filter '{flt_col} {flt_op} {flt_val}' kept {len(df):,}/{before:,} rows")
                 st.rerun()
@@ -551,8 +685,20 @@ elif page == "🧹 Clean Data":
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         if st.button("↩️ Reset to original", key="reset_clean"):
             st.session_state.df = st.session_state.original_df.copy()
+            st.session_state.cached_summary = None
             st.session_state.clean_log = ["↩️ Reset to original dataset"]
+            st.session_state.history = [st.session_state.df.copy()]
             st.rerun()
+
+        if st.button("↩️ Undo", key="undo_clean"):
+            if st.session_state.history and len(st.session_state.history) > 1:
+                st.session_state.history.pop()
+                st.session_state.df = st.session_state.history[-1].copy()
+                st.session_state.cached_summary = None
+                st.session_state.clean_log.append("↩️ Undid last clean step")
+                st.rerun()
+            else:
+                st.warning("Nothing to undo.")
  
     with prev:
         st.markdown("#### Live Preview")
@@ -595,13 +741,25 @@ else:
  
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
  
+        use_sample = False
+        if len(df) > LARGE_DF_THRESHOLD:
+            use_sample = st.checkbox(
+                "Sample for speed",
+                value=True,
+                help="Use a smaller random sample for preview and analysis when the dataset is very large.",
+            )
+
+        display_df = sample_df_for_speed(df, use_sample)
+        if len(display_df) != len(df):
+            st.info(f"Showing {len(display_df):,} sampled rows for speed. Full dataset still exists in memory.")
+
         with st.expander("Column types"):
             dtype_df = df.dtypes.rename("Type").to_frame()
             dtype_df["Nulls"] = df.isna().sum()
             dtype_df["Unique"] = df.nunique()
             st.dataframe(dtype_df, use_container_width=True)
  
-        st.dataframe(df, use_container_width=True, height=480)
+        st.dataframe(display_df, use_container_width=True, height=480)
  
     # ── Statistics ───────────────────────────────────────────────────────────
     elif page == "📊 Statistics":
@@ -609,16 +767,37 @@ else:
  
         tabs = st.tabs(["Numeric Stats", "Missing Values", "Value Counts"])
  
+        sample_analysis = False
+        if len(df) > LARGE_DF_THRESHOLD:
+            sample_analysis = st.checkbox(
+                "Sample for speed",
+                value=True,
+                help="Use a smaller sample for statistics and charts on large datasets.",
+            )
+
+        analysis_df = sample_df_for_speed(df, sample_analysis)
+        if len(analysis_df) != len(df):
+            st.info(f"Using {len(analysis_df):,} sampled rows for this analysis.")
+
         with tabs[0]:
-            stats = get_numeric_stats(df)
+            stats = get_numeric_stats(analysis_df)
             if stats is not None:
+                st.markdown("#### Numeric stats — click a column to visualize")
+                if not stats.empty:
+                    stat_cols = stats.columns.tolist()
+                    chosen_stat = st.radio("Select column to visualize", stat_cols, horizontal=True)
+                    if chosen_stat:
+                        st.session_state.selected_chart_column = chosen_stat
+                        st.session_state.selected_chart_type = "📈 Histogram"
+                        st.session_state.page = "📈 Visualizations"
+                        st.experimental_rerun()
                 st.dataframe(stats, use_container_width=True)
             else:
                 st.info("No numeric columns found.")
  
         with tabs[1]:
-            miss = df.isna().sum().rename("Missing").to_frame()
-            miss["Pct (%)"] = (miss["Missing"] / len(df) * 100).round(2)
+            miss = analysis_df.isna().sum().rename("Missing").to_frame()
+            miss["Pct (%)"] = (miss["Missing"] / len(analysis_df) * 100).round(2)
             miss = miss.sort_values("Missing", ascending=False)
             st.dataframe(miss, use_container_width=True)
  
@@ -636,33 +815,52 @@ else:
     elif page == "📈 Visualizations":
         section("CHARTS", "Visualizations")
  
-        nums = df.select_dtypes(include="number").columns.tolist()
-        cats = df.select_dtypes(exclude="number").columns.tolist()
+        sample_analysis = False
+        if len(df) > LARGE_DF_THRESHOLD:
+            sample_analysis = st.checkbox(
+                "Sample for speed",
+                value=True,
+                help="Use a smaller sample for chart rendering on large datasets.",
+            )
+
+        render_df = sample_df_for_speed(df, sample_analysis)
+        if len(render_df) != len(df):
+            st.info(f"Using {len(render_df):,} sampled rows for charts.")
+
+        nums = render_df.select_dtypes(include="number").columns.tolist()
+        cats = render_df.select_dtypes(exclude="number").columns.tolist()
  
+        chart = st.session_state.selected_chart_type or "📊 Bar"
         chart = st.segmented_control(
             "Chart type",
             ["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"],
-            default="📊 Bar",
+            default=chart,
         ) if hasattr(st, "segmented_control") else st.radio(
             "Chart type", ["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"],
+            index=["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"].index(chart) if chart in ["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"] else 0,
             horizontal=True,
         )
  
         st.markdown("<br>", unsafe_allow_html=True)
  
-        if "Bar" in chart and cats:
+        selected_col = st.session_state.selected_chart_column
+        if selected_col and chart == "📈 Histogram" and selected_col in nums:
+            c = selected_col
+            st.markdown(f"#### Visualizing selected column: {c}")
+            st.plotly_chart(plot_histogram(render_df, c), use_container_width=True)
+        elif "Bar" in chart and cats:
             c = st.selectbox("Category column", cats)
-            st.plotly_chart(plot_bar(df, c), use_container_width=True)
+            st.plotly_chart(plot_bar(render_df, c), use_container_width=True)
         elif "Histogram" in chart and nums:
             c = st.selectbox("Numeric column", nums)
-            st.plotly_chart(plot_histogram(df, c), use_container_width=True)
+            st.plotly_chart(plot_histogram(render_df, c), use_container_width=True)
         elif "Pie" in chart and cats:
             c = st.selectbox("Category column", cats)
-            st.plotly_chart(plot_pie(df, c), use_container_width=True)
+            st.plotly_chart(plot_pie(render_df, c), use_container_width=True)
         elif "Scatter" in chart and len(nums) >= 2:
             x_col = st.selectbox("X axis", nums)
             y_col = st.selectbox("Y axis", nums, index=1)
-            st.plotly_chart(plot_scatter(df, x_col, y_col), use_container_width=True)
+            st.plotly_chart(plot_scatter(render_df, x_col, y_col), use_container_width=True)
         else:
             st.info("Not enough columns of the required type for this chart.")
  
@@ -681,8 +879,9 @@ else:
         if st.button("Ask AI →"):
             if q.strip():
                 with st.spinner("Thinking…"):
-                    summary = get_summary(df, st.session_state.filename)
-                    ans = ask_ai(q, summary)
+                    if st.session_state.cached_summary is None:
+                        st.session_state.cached_summary = get_summary(df, st.session_state.filename)
+                    ans = ask_ai(q, st.session_state.cached_summary)
                 st.session_state.answer = ans
             else:
                 st.warning("Please enter a question.")
