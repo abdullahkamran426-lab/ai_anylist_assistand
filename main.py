@@ -48,18 +48,86 @@ html, body, [class*="css"] {
     background: var(--surface) !important;
     border-right: 1px solid var(--border);
 }
-[data-testid="stSidebar"] .stRadio label {
-    padding: 8px 14px;
-    border-radius: 8px;
-    transition: background .15s;
-    font-size: 0.9rem;
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.4rem; }
+
+/* Nav radio group container */
+[data-testid="stSidebar"] [data-testid="stRadio"] > div[role="radiogroup"] {
+    gap: 3px;
+}
+
+/* Each nav item */
+[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    position: relative;
+    display: flex !important;
+    align-items: center;
+    width: 100%;
+    padding: 10px 14px 10px 16px !important;
+    margin: 0 !important;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, transform .1s ease;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+    background: var(--card);
+    border-color: var(--border);
+    transform: translateX(2px);
+}
+
+/* Hide the native radio dot */
+[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child {
+    display: none !important;
+}
+
+/* Label text */
+[data-testid="stSidebar"] [data-testid="stRadio"] label > div:last-child {
+    font-size: 0.88rem;
     font-weight: 500;
     color: var(--muted);
+    letter-spacing: .01em;
 }
-[data-testid="stSidebar"] .stRadio label:hover {
-    background: var(--card);
-    color: var(--text);
+
+/* Selected item */
+[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+    background: linear-gradient(90deg, rgba(99,102,241,.22) 0%, rgba(99,102,241,.06) 100%);
+    border-color: rgba(99,102,241,.45);
 }
+[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked)::before {
+    content: '';
+    position: absolute;
+    left: -1px; top: 6px; bottom: 6px;
+    width: 3px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--accent2), var(--accent));
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) > div:last-child {
+    color: #fff;
+    font-weight: 700;
+}
+
+/* Section group labels, injected above specific nav items */
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(3),
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(4),
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(7),
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(9) {
+    margin-top: 20px !important;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(3)::after,
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(4)::after,
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(7)::after,
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(9)::after {
+    position: absolute;
+    top: -18px; left: 16px;
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    color: #4b5065;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(3)::after { content: 'PREPARE'; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(4)::after { content: 'EXPLORE'; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(7)::after { content: 'INSIGHTS'; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(9)::after { content: 'MORE'; }
 
 /* ── Metric cards ── */
 [data-testid="metric-container"] {
@@ -339,6 +407,8 @@ for key, default in {
     "selected_chart_column": None,
     "selected_chart_type": None,
     "redirect_to": None,
+    "chat_history": [],
+    "ai_prefill": "",
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -346,12 +416,23 @@ for key, default in {
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-    <div style='padding:12px 0 20px'>
-        <div style='font-family:Space Grotesk;font-size:1.25rem;font-weight:700;color:#fff'>
-            🔬 DataLens
-        </div>
-        <div style='color:#6366f1;font-size:0.75rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase'>
-            AI Analysis
+    <style>
+    @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+    </style>
+    <div style='display:flex;align-items:center;gap:12px;padding:6px 2px 22px'>
+        <div style='width:40px;height:40px;border-radius:11px;flex-shrink:0;
+                    background:linear-gradient(135deg,#6366f1,#818cf8);
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:1.15rem;box-shadow:0 6px 18px rgba(99,102,241,.35)'>🔬</div>
+        <div>
+            <div style='font-family:Space Grotesk;font-size:1.15rem;font-weight:700;
+                        color:#fff;line-height:1.1'>DataLens</div>
+            <div style='display:flex;align-items:center;gap:5px;margin-top:2px'>
+                <span style='width:6px;height:6px;border-radius:50%;background:#22d3a5;
+                            display:inline-block;animation:pulse-dot 2s infinite'></span>
+                <span style='color:#64748b;font-size:.68rem;font-weight:600;
+                            letter-spacing:.08em;text-transform:uppercase'>AI Analysis</span>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -378,19 +459,50 @@ with st.sidebar:
     # Dataset status badge
     if st.session_state.df is not None:
         df_info = st.session_state.df
-        st.markdown("<div class='div'></div>", unsafe_allow_html=True)
+        total_cells = df_info.shape[0] * df_info.shape[1]
+        missing_cells = int(df_info.isna().sum().sum())
+        health_pct = 100 if total_cells == 0 else round(100 - (missing_cells / total_cells * 100), 1)
+        health_color = "#22d3a5" if health_pct >= 90 else ("#fbbf24" if health_pct >= 70 else "#f87171")
+
+        st.markdown("<div class='div' style='margin:18px 0 14px'></div>", unsafe_allow_html=True)
         st.markdown(f"""
-        <div style='background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);
-                    border-radius:10px;padding:14px;'>
-            <div style='font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;
-                        color:#818cf8;font-weight:700;margin-bottom:8px'>Active Dataset</div>
-            <div style='color:#e2e8f0;font-weight:600;font-size:.9rem;
-                        word-break:break-all'>{st.session_state.filename}</div>
-            <div style='color:#94a3b8;font-size:.8rem;margin-top:6px'>
-                {df_info.shape[0]:,} rows · {df_info.shape[1]} columns
+        <div style='background:linear-gradient(135deg,rgba(99,102,241,.12) 0%,rgba(99,102,241,.03) 100%);
+                    border:1px solid rgba(99,102,241,.3);border-radius:12px;padding:16px;'>
+            <div style='display:flex;align-items:center;gap:8px;margin-bottom:10px'>
+                <span style='font-size:.95rem'>📁</span>
+                <span style='font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;
+                            color:#818cf8;font-weight:700'>Active Dataset</span>
+            </div>
+            <div style='color:#e2e8f0;font-weight:600;font-size:.87rem;
+                        word-break:break-all;margin-bottom:8px'>{st.session_state.filename}</div>
+            <div style='color:#94a3b8;font-size:.78rem;margin-bottom:10px'>
+                {df_info.shape[0]:,} rows &nbsp;·&nbsp; {df_info.shape[1]} columns
+            </div>
+            <div style='display:flex;justify-content:space-between;font-size:.7rem;
+                        color:#64748b;margin-bottom:4px'>
+                <span>Data health</span><span style='color:{health_color};font-weight:700'>{health_pct}%</span>
+            </div>
+            <div style='background:rgba(255,255,255,.06);border-radius:99px;height:5px;overflow:hidden'>
+                <div style='width:{health_pct}%;height:100%;background:{health_color};border-radius:99px'></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+        if st.button("🗑️ Clear dataset", key="clear_dataset", use_container_width=True):
+            st.session_state.df = None
+            st.session_state.original_df = None
+            st.session_state.filename = None
+            st.session_state.clean_log = []
+            st.session_state.answer = None
+            st.session_state.chat_history = []
+            st.rerun()
+
+    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style='color:#4b5065;font-size:.68rem;text-align:center;letter-spacing:.03em'>
+        DataLens · Streamlit + Plotly + AI
+    </div>
+    """, unsafe_allow_html=True)
 
 # ── Helper: section header ─────────────────────────────────────────────────────
 def section(label: str, title: str):
