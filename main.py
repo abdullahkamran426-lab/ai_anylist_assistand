@@ -766,11 +766,10 @@ else:
  
         st.dataframe(display_df, width="stretch", height=480)
  
+
     # ── Statistics ───────────────────────────────────────────────────────────
     elif page == "📊 Statistics":
         section("ANALYSIS", "Statistical Summary")
- 
-        tabs = st.tabs(["Numeric Stats", "Missing Values", "Value Counts"])
  
         sample_analysis = False
         if len(df) > LARGE_DF_THRESHOLD:
@@ -779,24 +778,32 @@ else:
                 value=True,
                 help="Use a smaller sample for statistics and charts on large datasets.",
             )
-
+ 
         analysis_df = sample_df_for_speed(df, sample_analysis)
         if len(analysis_df) != len(df):
             st.info(f"Using {len(analysis_df):,} sampled rows for this analysis.")
-
+ 
+        tabs = st.tabs(["Numeric Stats", "Missing Values", "Value Counts"])
+ 
         with tabs[0]:
             stats = get_numeric_stats(analysis_df)
-            if stats is not None:
-                st.markdown("#### Numeric stats — click a column to visualize")
-                if not stats.empty:
-                    stat_cols = stats.columns.tolist()
-                    chosen_stat = st.radio("Select column to visualize", stat_cols, horizontal=True)
-                    if chosen_stat:
-                        st.session_state.selected_chart_column = chosen_stat
-                        st.session_state.selected_chart_type = "📈 Histogram"
-                        st.session_state.redirect_to = "📈 Visualizations"
-                        st.rerun()
-                st.dataframe(stats, width="stretch")
+            if stats is not None and not stats.empty:
+                st.markdown("#### Numeric stats")
+                st.dataframe(stats, use_container_width=True)
+ 
+                st.markdown("#### Visualize a column")
+                stat_cols = stats.columns.tolist()
+                chosen_stat = st.radio(
+                    "Select column to visualize",
+                    stat_cols,
+                    horizontal=True,
+                    key="stats_chart_pick",
+                )
+                if st.button("📈 Visualize this column", key="go_visualize"):
+                    st.session_state.selected_chart_column = chosen_stat
+                    st.session_state.selected_chart_type = "📈 Histogram"
+                    st.session_state.redirect_to = "📈 Visualizations"
+                    st.rerun()
             else:
                 st.info("No numeric columns found.")
  
@@ -804,7 +811,7 @@ else:
             miss = analysis_df.isna().sum().rename("Missing").to_frame()
             miss["Pct (%)"] = (miss["Missing"] / len(analysis_df) * 100).round(2)
             miss = miss.sort_values("Missing", ascending=False)
-            st.dataframe(miss, width="stretch")
+            st.dataframe(miss, use_container_width=True)
  
         with tabs[2]:
             cat_cols = df.select_dtypes(exclude="number").columns.tolist()
@@ -812,7 +819,7 @@ else:
                 chosen = st.selectbox("Column", cat_cols)
                 vc = df[chosen].value_counts().rename("Count").to_frame()
                 vc["Pct (%)"] = (vc["Count"] / len(df) * 100).round(2)
-                st.dataframe(vc, width="stretch")
+                st.dataframe(vc, use_container_width=True)
             else:
                 st.info("No categorical columns found.")
  
