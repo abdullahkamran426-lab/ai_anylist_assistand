@@ -471,7 +471,7 @@ elif page == "📂 Upload Dataset":
  
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         st.subheader("Preview (first 10 rows)")
-        st.dataframe(df.head(10), use_container_width=True)
+        st.dataframe(df.head(10), width="stretch")
     else:
         st.info("👆 Upload a CSV file to get started.")
  
@@ -707,7 +707,7 @@ elif page == "🧹 Clean Data":
  
     with prev:
         st.markdown("#### Live Preview")
-        st.dataframe(df.head(50), use_container_width=True, height=340)
+        st.dataframe(df.head(50), width="stretch", height=340)
  
         # Missing-value heatmap summary
         if df.isna().any().any():
@@ -717,7 +717,7 @@ elif page == "🧹 Clean Data":
                       .to_frame()
                       .assign(Pct=lambda d: (d["Missing"]/len(df)*100).round(2))
                       .query("Missing > 0"))
-            st.dataframe(miss, use_container_width=True)
+            st.dataframe(miss, width="stretch")
  
         # Clean log
         if st.session_state.clean_log:
@@ -762,9 +762,9 @@ else:
             dtype_df = df.dtypes.rename("Type").to_frame()
             dtype_df["Nulls"] = df.isna().sum()
             dtype_df["Unique"] = df.nunique()
-            st.dataframe(dtype_df, use_container_width=True)
+            st.dataframe(dtype_df, width="stretch")
  
-        st.dataframe(display_df, use_container_width=True, height=480)
+        st.dataframe(display_df, width="stretch", height=480)
  
     # ── Statistics ───────────────────────────────────────────────────────────
     elif page == "📊 Statistics":
@@ -795,8 +795,8 @@ else:
                         st.session_state.selected_chart_column = chosen_stat
                         st.session_state.selected_chart_type = "📈 Histogram"
                         st.session_state.redirect_to = "📈 Visualizations"
-                        st.experimental_rerun()
-                st.dataframe(stats, use_container_width=True)
+                        st.rerun()
+                st.dataframe(stats, width="stretch")
             else:
                 st.info("No numeric columns found.")
  
@@ -804,7 +804,7 @@ else:
             miss = analysis_df.isna().sum().rename("Missing").to_frame()
             miss["Pct (%)"] = (miss["Missing"] / len(analysis_df) * 100).round(2)
             miss = miss.sort_values("Missing", ascending=False)
-            st.dataframe(miss, use_container_width=True)
+            st.dataframe(miss, width="stretch")
  
         with tabs[2]:
             cat_cols = df.select_dtypes(exclude="number").columns.tolist()
@@ -812,7 +812,7 @@ else:
                 chosen = st.selectbox("Column", cat_cols)
                 vc = df[chosen].value_counts().rename("Count").to_frame()
                 vc["Pct (%)"] = (vc["Count"] / len(df) * 100).round(2)
-                st.dataframe(vc, use_container_width=True)
+                st.dataframe(vc, width="stretch")
             else:
                 st.info("No categorical columns found.")
  
@@ -852,20 +852,20 @@ else:
         if selected_col and chart == "📈 Histogram" and selected_col in nums:
             c = selected_col
             st.markdown(f"#### Visualizing selected column: {c}")
-            st.plotly_chart(plot_histogram(render_df, c), use_container_width=True)
+            st.plotly_chart(plot_histogram(render_df, c), width="stretch")
         elif "Bar" in chart and cats:
             c = st.selectbox("Category column", cats)
-            st.plotly_chart(plot_bar(render_df, c), use_container_width=True)
+            st.plotly_chart(plot_bar(render_df, c), width="stretch")
         elif "Histogram" in chart and nums:
             c = st.selectbox("Numeric column", nums)
-            st.plotly_chart(plot_histogram(render_df, c), use_container_width=True)
+            st.plotly_chart(plot_histogram(render_df, c), width="stretch")
         elif "Pie" in chart and cats:
             c = st.selectbox("Category column", cats)
-            st.plotly_chart(plot_pie(render_df, c), use_container_width=True)
+            st.plotly_chart(plot_pie(render_df, c), width="stretch")
         elif "Scatter" in chart and len(nums) >= 2:
             x_col = st.selectbox("X axis", nums)
             y_col = st.selectbox("Y axis", nums, index=1)
-            st.plotly_chart(plot_scatter(render_df, x_col, y_col), use_container_width=True)
+            st.plotly_chart(plot_scatter(render_df, x_col, y_col), width="stretch")
         else:
             st.info("Not enough columns of the required type for this chart.")
  
