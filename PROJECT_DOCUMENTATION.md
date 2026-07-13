@@ -174,8 +174,6 @@ From `requirements.txt`:
 ### Setup
 
 ```powershell
-cd c:\Users\Texon\OneDrive\Desktop\ali
-python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
