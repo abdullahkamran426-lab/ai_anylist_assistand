@@ -1,21 +1,32 @@
+import hashlib
+import io
+
 import pandas as pd
 import numpy as np
 import streamlit as st
 from fpdf import FPDF
 import re
 
+
+def compute_file_hash(file_bytes):
+    """Return a stable hash for an uploaded file payload."""
+    return hashlib.md5(file_bytes).hexdigest()
+
+
 @st.cache_data
-def load_data(uploaded_file):
-    """Reads the CSV file with fallback encodings. Cached for speed."""
+def load_data(file_bytes):
+    """Reads CSV bytes with fallback encodings. Cached by content hash."""
     try:
-        df = pd.read_csv(uploaded_file, encoding="utf-8")
+        df = pd.read_csv(io.BytesIO(file_bytes), encoding="utf-8")
     except UnicodeDecodeError:
         try:
-            df = pd.read_csv(uploaded_file, encoding="cp1252")
+            df = pd.read_csv(io.BytesIO(file_bytes), encoding="cp1252")
         except:
-            df = pd.read_csv(uploaded_file, encoding="latin1")
+            df = pd.read_csv(io.BytesIO(file_bytes), encoding="latin1")
     return df
 
+
+@st.cache_data
 def clean_data(df):
     """Cleans specific columns like Gross."""
     if 'Gross' in df.columns:
@@ -23,6 +34,8 @@ def clean_data(df):
         df['Gross'] = pd.to_numeric(df['Gross'], errors='coerce')
     return df
 
+
+@st.cache_data
 def get_summary(df, filename):
     """Generates a text summary of the dataset for the AI."""
     return f"""
