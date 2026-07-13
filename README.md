@@ -13,7 +13,6 @@
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.x-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)](#)
 [![Plotly](https://img.shields.io/badge/Plotly-Interactive-3F4F75?style=flat-square&logo=plotly&logoColor=white)](#)
 [![OpenRouter](https://img.shields.io/badge/AI-OpenRouter-7C5CFC?style=flat-square)](#)
-[![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)](#)
 
 </div>
 
