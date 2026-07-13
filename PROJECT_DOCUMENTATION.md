@@ -196,10 +196,3 @@ OPENROUTER_API_KEY=your_openrouter_api_key
 ```powershell
 streamlit run main.py
 ```
-
-## 6. Suggested Improvements
-
-- Generalize `clean_data()` to support more columns than just `Gross`.
-- Add tests for data helpers and AI integration.
-- Remove unused dependencies if `matplotlib` and `seaborn` are not needed.
-- Use a configuration object instead of importing `dotenv` at module load time.
