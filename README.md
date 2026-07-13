@@ -244,11 +244,6 @@ Sends a combined prompt — dataset context and user question — to the model a
 - `clean_data()` currently targets a `Gross` column specifically. Extend it in `analysis.py` for your dataset's structure.
 - `matplotlib` and `seaborn` are in `requirements.txt` but not yet wired to any charts — swap Plotly functions in `visualization.py` if you prefer them.
 
----
-
-## 📜 License
-
-This project is licensed under the **MIT License** — see [`LICENSE`](LICENSE) for details.
 
 ---
 
