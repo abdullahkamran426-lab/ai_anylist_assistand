@@ -1,26 +1,53 @@
-from pathlib import Path
-import streamlit as st
-import pandas as pd
-import numpy as np
+"""
+DataLens — AI Data Analysis Assistant
+======================================
+A Streamlit app that lets a user upload a CSV, clean it interactively,
+explore it with stats/charts, and ask an AI questions about it.
+
+Page flow (controlled by the sidebar radio in `page`):
+    Home → Upload Dataset → Clean Data → Dataset Preview / Statistics /
+    Visualizations → AI Assistant → Export Report → About
+
+All page state (the loaded dataframe, chat history, chart selections, etc.)
+lives in `st.session_state` so it survives Streamlit's rerun-on-every-
+interaction model.
+"""
+
+from pathlib import Path          # not currently used directly, kept for future file-path helpers
+import streamlit as st            # the web app framework that renders every widget on the page
+import pandas as pd                # dataframe engine used for all data manipulation
+import numpy as np                 # numeric helpers (currently only needed indirectly via pandas)
+
+# Project-local modules: business logic is kept out of this UI file on purpose,
+# so main.py only orchestrates *what* happens, not *how*.
 from analysis import load_data, clean_data, get_summary, get_numeric_stats, get_category_counts, export_to_pdf
 from visualization import plot_bar, plot_histogram, plot_pie, plot_scatter
 from ai_helper import ask_ai
 
 # ── Page config ────────────────────────────────────────────────────────────────
+# Must be the first Streamlit call in the script. Sets the browser tab title/icon
+# and switches the app to a wide, full-width layout instead of the default centered one.
 st.set_page_config(
     page_title="DataLens — AI Analysis",
     page_icon="🔬",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="expanded",   # sidebar starts open instead of collapsed
 )
 
 # ── Global CSS ─────────────────────────────────────────────────────────────────
+# Streamlit doesn't expose a theming API rich enough for a fully custom look, so we
+# inject raw CSS once here. Everything below targets Streamlit's internal
+# `data-testid` attributes (stable across widget types) or our own custom classes
+# used inside st.markdown(..., unsafe_allow_html=True) calls further down the file.
+# Each `/* ── Section ── */` comment marks one visual area of the app.
 st.markdown("""
 <style>
 /* ── Fonts ── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap');
 
-/* ── Root palette ── */
+/* ── Root palette ──
+   CSS custom properties (variables) so every color in the app is defined once
+   and reused everywhere via var(--name). Change a value here to re-theme the whole app. */
 :root {
     --bg:        #0f1117;
     --surface:   #1a1d27;
@@ -43,7 +70,12 @@ html, body, [class*="css"] {
     color: var(--text) !important;
 }
 
-/* ── Sidebar ── */
+/* ── Sidebar ──
+   The page navigation is a plain st.radio() widget in the sidebar (see the
+   Python code below). Streamlit renders radio options as <label> elements
+   containing a hidden native radio dot + a text div. All the CSS below
+   re-skins those labels into a modern "nav item" list without touching
+   any Python logic. */
 [data-testid="stSidebar"] {
     background: var(--surface) !important;
     border-right: 1px solid var(--border);
@@ -75,7 +107,7 @@ html, body, [class*="css"] {
     transform: translateX(2px);
 }
 
-/* Hide the native radio dot */
+/* Hide the native radio dot — we show selection state via background/border instead */
 [data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child {
     display: none !important;
 }
@@ -88,7 +120,8 @@ html, body, [class*="css"] {
     letter-spacing: .01em;
 }
 
-/* Selected item */
+/* Selected item — :has() lets pure CSS react to the hidden radio input's checked
+   state without any JavaScript or Streamlit component. */
 [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
     background: linear-gradient(90deg, rgba(99,102,241,.22) 0%, rgba(99,102,241,.06) 100%);
     border-color: rgba(99,102,241,.45);
@@ -106,7 +139,11 @@ html, body, [class*="css"] {
     font-weight: 700;
 }
 
-/* Section group labels, injected above specific nav items */
+/* Section group labels, injected above specific nav items.
+   nth-of-type(N) targets the Nth radio option by its fixed position in the
+   `_nav_options` list below (3 = Clean Data, 4 = Dataset Preview, 7 = AI
+   Assistant, 9 = About) and draws a small uppercase caption above it via
+   ::after, purely visual grouping — no extra widgets needed. */
 [data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(3),
 [data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(4),
 [data-testid="stSidebar"] [data-testid="stRadio"] label:nth-of-type(7),
@@ -470,32 +507,50 @@ summary { font-weight: 600; color: var(--text) !important; }
 """, unsafe_allow_html=True)
 
 # ── Large-data helpers ─────────────────────────────────────────────────────────
+# Row count above which we offer to work on a random sample instead of the full
+# dataframe, so Statistics/Visualizations stay responsive on big CSVs.
 LARGE_DF_THRESHOLD = 100_000
 
 def sample_df_for_speed(frame: pd.DataFrame, enabled: bool, n: int = 50_000) -> pd.DataFrame:
-    """Return a random sample of `frame` when enabled and it's large; otherwise the frame itself."""
+    """Return a random sample of `frame` when enabled and it's large; otherwise the frame itself.
+
+    Args:
+        frame:   the dataframe to (maybe) sample.
+        enabled: whether the user has opted into sampling (checkbox on the page).
+        n:       max rows to keep when sampling.
+    A fixed `random_state=42` keeps the sample identical across reruns, so
+    numbers don't visibly jump around every time a widget is touched.
+    """
     if enabled and len(frame) > n:
         return frame.sample(n, random_state=42)
     return frame
 
 # ── Session state ──────────────────────────────────────────────────────────────
+# Streamlit reruns this whole script top-to-bottom on every widget interaction,
+# so anything that must persist across reruns (the loaded data, chat log, which
+# page to jump to next, etc.) is stored in st.session_state instead of a normal
+# Python variable. This loop seeds every key with a default exactly once —
+# `if key not in st.session_state` stops it from wiping existing values on rerun.
 for key, default in {
-    "df": None,
-    "original_df": None,
-    "filename": None,
-    "answer": None,
-    "clean_log": [],
-    "selected_chart_column": None,
-    "selected_chart_type": None,
-    "redirect_to": None,
-    "chat_history": [],
-    "ai_prefill": "",
+    "df": None,                    # the current (possibly cleaned) working dataframe
+    "original_df": None,           # untouched copy, used by the "Reset to original" button
+    "filename": None,              # name of the uploaded file, shown in the sidebar/export
+    "answer": None,                # most recent AI answer, used by the Export Report page
+    "clean_log": [],               # human-readable list of cleaning actions applied so far
+    "selected_chart_column": None, # column to pre-select when Statistics redirects to Visualizations
+    "selected_chart_type": None,   # chart type to pre-select for the same redirect
+    "redirect_to": None,           # page name to force-navigate to on the next rerun
+    "chat_history": [],            # list of {"q":..., "a":...} turns for the AI chat UI
+    "ai_prefill": "",              # text to pre-fill the AI question box (from a suggestion chip)
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
+# Everything inside this `with` block renders in the left sidebar column.
 with st.sidebar:
+    # Logo + app name + a small pulsing "AI Analysis" status dot (pure CSS animation
+    # defined inline here since it's only used once).
     st.markdown("""
     <style>
     @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:.35; } }
@@ -518,18 +573,28 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
+    # The master list of pages, in display order. The CSS `nth-of-type` rules above
+    # rely on this exact order (items 3, 4, 7, 9) to draw section group labels —
+    # if you reorder this list, update the CSS selectors to match.
     _nav_options = ["🏠 Home", "📂 Upload Dataset", "🧹 Clean Data",
                      "🔍 Dataset Preview", "📊 Statistics",
                      "📈 Visualizations", "🤖 AI Assistant",
                      "📄 Export Report", "ℹ️ About"]
 
-    # If Statistics asked us to jump to Visualizations with a pre-picked column,
-    # honor that once, then clear it so normal navigation resumes.
+    # Cross-page navigation trick: other pages (e.g. Statistics) can set
+    # st.session_state.redirect_to to a page name and call st.rerun() to force
+    # the sidebar radio to open on that page next render. We consume it once
+    # here (read it into _default_index, then clear it) so it doesn't keep
+    # forcing that page on every future rerun — normal manual navigation
+    # resumes immediately after.
     _default_index = 0
     if st.session_state.redirect_to in _nav_options:
         _default_index = _nav_options.index(st.session_state.redirect_to)
         st.session_state.redirect_to = None
 
+    # The actual navigation control. Its visible label is hidden (collapsed)
+    # because the logo block above already establishes context; all the pill/
+    # highlight styling comes from the CSS block earlier in the file.
     page = st.radio(
         "Navigation",
         _nav_options,
@@ -537,12 +602,17 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    # Dataset status badge
+    # ── Dataset status badge ──
+    # Only shown once a file has been uploaded. Gives an at-a-glance summary of
+    # what's loaded and a rough "data health" score (% of cells that are NOT
+    # missing) so the user doesn't have to visit Statistics just to check.
     if st.session_state.df is not None:
         df_info = st.session_state.df
         total_cells = df_info.shape[0] * df_info.shape[1]
         missing_cells = int(df_info.isna().sum().sum())
+        # Guard against division by zero for an empty dataframe.
         health_pct = 100 if total_cells == 0 else round(100 - (missing_cells / total_cells * 100), 1)
+        # Traffic-light coloring: green when mostly complete, amber when patchy, red when sparse.
         health_color = "#22d3a5" if health_pct >= 90 else ("#fbbf24" if health_pct >= 70 else "#f87171")
 
         st.markdown("<div class='div' style='margin:18px 0 14px'></div>", unsafe_allow_html=True)
@@ -569,6 +639,8 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
 
+        # Wipes every piece of state tied to the current dataset so the app
+        # behaves as if nothing was ever uploaded, then reruns to reflect it.
         if st.button("🗑️ Clear dataset", key="clear_dataset", use_container_width=True):
             st.session_state.df = None
             st.session_state.original_df = None
@@ -587,6 +659,9 @@ with st.sidebar:
 
 # ── Helper: section header ─────────────────────────────────────────────────────
 def section(label: str, title: str):
+    """Render the small-uppercase-eyebrow + large-title heading pattern used
+    at the top of most pages (e.g. label='ANALYSIS', title='Statistical Summary').
+    Kept as a function so every page gets an identical, consistently-styled heading."""
     st.markdown(f"<div class='section-label'>{label}</div>"
                 f"<div class='section-title'>{title}</div>",
                 unsafe_allow_html=True)
@@ -594,8 +669,11 @@ def section(label: str, title: str):
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HOME
+# The landing page. Purely informational/marketing — no dataframe is required
+# here, so it's the one page that works before anything is uploaded.
 # ══════════════════════════════════════════════════════════════════════════════
 if page == "🏠 Home":
+    # Big gradient banner introducing the app.
     st.markdown("""
     <div class='hero'>
         <div class='hero-title'>Understand your data<br>in <span>minutes, not hours.</span></div>
@@ -606,7 +684,7 @@ if page == "🏠 Home":
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Feature cards ──
+    # ── Feature cards ── four-column grid summarizing the app's capabilities.
     section("CAPABILITIES", "Everything you need")
     cols = st.columns(4)
     features = [
@@ -615,6 +693,8 @@ if page == "🏠 Home":
         ("📈", "Rich Visualisations", "Bar, histogram, pie and scatter charts powered by Plotly."),
         ("🤖", "AI Insights",         "Ask plain-English questions. Get instant answers from OpenRouter AI."),
     ]
+    # zip() pairs each Streamlit column with its matching feature tuple so we
+    # can loop once instead of writing four nearly-identical blocks.
     for col, (icon, title, desc) in zip(cols, features):
         with col:
             st.markdown(f"""
@@ -627,7 +707,7 @@ if page == "🏠 Home":
 
     st.markdown("<div class='div'></div>", unsafe_allow_html=True)
 
-    # ── How it works ──
+    # ── How it works ── three-step onboarding cards pointing at the relevant pages.
     section("WORKFLOW", "Three steps to insight")
     s1, s2, s3 = st.columns(3)
     steps = [
@@ -662,6 +742,9 @@ if page == "🏠 Home":
 
 # ══════════════════════════════════════════════════════════════════════════════
 # UPLOAD
+# Entry point for getting data into the app. Reads the CSV, runs it through
+# the auto-clean pipeline (analysis.clean_data), and stores the result in
+# session_state so every other page can read st.session_state.df.
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "📂 Upload Dataset":
     st.markdown("""
@@ -672,6 +755,8 @@ elif page == "📂 Upload Dataset":
     </div>
     """, unsafe_allow_html=True)
 
+    # The actual upload widget. `type=["csv"]` restricts the file picker/drop
+    # target to .csv files only. Returns None until a file is chosen.
     uploaded = st.file_uploader(
         "Drop a CSV file here or click to browse",
         type=["csv"],
@@ -679,6 +764,7 @@ elif page == "📂 Upload Dataset":
         label_visibility="collapsed",
     )
 
+    # Nothing uploaded yet → show a friendly empty state instead of a blank page.
     if not uploaded:
         st.markdown("""
         <div class='upload-empty'>
@@ -694,15 +780,21 @@ elif page == "📂 Upload Dataset":
         """, unsafe_allow_html=True)
 
     if uploaded:
+        # `.getvalue()` returns the raw file bytes. We pass bytes (not the
+        # UploadedFile object) into load_data() because that function is
+        # decorated with @st.cache_data in analysis.py, and cache keys must
+        # be hashable — bytes are, file-like objects aren't.
         with st.spinner("Reading and auto-cleaning…"):
             raw_df = load_data(uploaded.getvalue())
-            df = clean_data(raw_df)
+            df = clean_data(raw_df)   # baseline auto-clean: trims whitespace, drops exact duplicate rows, etc.
 
+        # Persist the freshly-loaded data for every other page to use.
         st.session_state.df = df
-        st.session_state.original_df = df.copy()
+        st.session_state.original_df = df.copy()   # untouched snapshot for the "Reset" button on Clean Data
         st.session_state.filename = uploaded.name
         st.session_state.clean_log = ["✅ Initial auto-clean applied (whitespace stripped, obvious duplicates removed)"]
 
+        # Human-readable file size (KB below 1MB, MB above).
         size_kb = len(uploaded.getvalue()) / 1024
         size_txt = f"{size_kb:,.1f} KB" if size_kb < 1024 else f"{size_kb/1024:,.2f} MB"
 
@@ -716,6 +808,7 @@ elif page == "📂 Upload Dataset":
         </div>
         """, unsafe_allow_html=True)
 
+        # Quick at-a-glance KPIs for the freshly loaded data.
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Rows",            f"{df.shape[0]:,}")
         c2.metric("Columns",         df.shape[1])
@@ -724,6 +817,7 @@ elif page == "📂 Upload Dataset":
 
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
 
+        # Two views into the data: a row preview, and a per-column dtype summary.
         prev_tab, types_tab = st.tabs(["👁️ Preview", "🧬 Column types"])
         with prev_tab:
             st.dataframe(df.head(10), use_container_width=True)
@@ -736,6 +830,9 @@ elif page == "📂 Upload Dataset":
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         st.markdown("<div class='section-label'>NEXT UP</div>", unsafe_allow_html=True)
 
+        # "What next?" shortcut cards. Each "Go →" button uses the same
+        # redirect_to session-state trick as the Statistics→Visualizations
+        # jump, so clicking it takes the user straight to that page.
         n1, n2, n3 = st.columns(3)
         next_steps = [
             (n1, "🧹", "Clean it up", "Handle nulls, duplicates & types.", "🧹 Clean Data"),
@@ -758,16 +855,23 @@ elif page == "📂 Upload Dataset":
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CLEAN DATA  (new feature)
+# The interactive cleaning pipeline. Every control here mutates `df`, saves it
+# back into st.session_state.df, appends a message to clean_log, then calls
+# st.rerun() to redraw the page with the updated data — this is the standard
+# Streamlit pattern for "apply an edit and refresh immediately".
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "🧹 Clean Data":
     df = st.session_state.df
     if df is None:
+        # Guard: this page is meaningless without data, so bail out early.
         st.warning("Upload a dataset first.")
         st.stop()
 
     section("DATA CLEANING", "Fix, reshape & prepare")
 
     # ── Before/after KPIs ──
+    # `orig` is the untouched copy saved at upload time; comparing against it
+    # lets st.metric() show a delta (e.g. "-12 rows") next to the current value.
     orig = st.session_state.original_df
     col_a, col_b, col_c, col_d = st.columns(4)
     col_a.metric("Current rows",    f"{df.shape[0]:,}",  f"{df.shape[0]-orig.shape[0]:,}" if orig is not None else None)
@@ -779,6 +883,9 @@ elif page == "🧹 Clean Data":
     st.markdown("<div class='div'></div>", unsafe_allow_html=True)
 
     # ── Download cleaned dataset ──
+    # Encode the current (possibly cleaned) dataframe to CSV bytes once, up
+    # front, so both download buttons below (top banner + bottom shortcut)
+    # can reuse the same `csv_bytes`/`clean_filename` without recomputing.
     csv_bytes = df.to_csv(index=False).encode("utf-8")
     clean_filename = f"cleaned_{st.session_state.filename or 'dataset.csv'}"
     if not clean_filename.lower().endswith(".csv"):
@@ -815,28 +922,32 @@ elif page == "🧹 Clean Data":
     st.markdown("<div class='div'></div>", unsafe_allow_html=True)
 
     # ── Left: controls   Right: live preview ──
+    # Two-column layout: every cleaning tool lives in the narrower left column,
+    # while the wider right column always mirrors the current state of `df`.
     ctrl, prev = st.columns([1, 1.6], gap="large")
 
     with ctrl:
-        # 1. Duplicate rows
+        # 1. Duplicate rows — detect exact row-level duplicates and offer a one-click removal.
         st.markdown("<div class='clean-panel'><h4>🔂 Duplicate Rows</h4>", unsafe_allow_html=True)
         dup_count = int(df.duplicated().sum())
         st.markdown(f"<span class='pill pill-{'red' if dup_count else 'green'}'>"
                     f"{'⚠️ ' if dup_count else '✅ '}{dup_count} duplicate{'s' if dup_count!=1 else ''}</span>",
                     unsafe_allow_html=True)
         if dup_count and st.button("Remove duplicates", key="rm_dup"):
-            df = df.drop_duplicates().reset_index(drop=True)
+            df = df.drop_duplicates().reset_index(drop=True)  # reset_index keeps row numbers contiguous after dropping
             st.session_state.df = df
             st.session_state.clean_log.append(f"✅ Removed {dup_count} duplicate rows")
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 2. Missing values
+        # 2. Missing values — per-column strategy picker (drop / mean / median / mode / constant).
         missing_cols = df.columns[df.isna().any()].tolist()
         st.markdown("<div class='clean-panel'><h4>❓ Missing Values</h4>", unsafe_allow_html=True)
         if not missing_cols:
             st.markdown("<span class='pill pill-green'>✅ No missing values</span>", unsafe_allow_html=True)
         else:
+            # Show one pill per affected column so the user can see the scope
+            # of the problem before deciding on a fix.
             for col in missing_cols:
                 cnt = int(df[col].isna().sum())
                 pct = cnt / len(df) * 100
@@ -854,6 +965,10 @@ elif page == "🧹 Clean Data":
             if st.button("Apply", key="apply_mv"):
                 col_data = df[mv_col]
                 before   = int(col_data.isna().sum())
+                # Each branch below implements one strategy. Mean/median only
+                # make sense for numeric columns, so they're guarded by a
+                # dtype check; if the check fails the final `else` reports
+                # that the strategy was skipped instead of silently no-op'ing.
                 if mv_strat == "Drop rows":
                     df = df.dropna(subset=[mv_col]).reset_index(drop=True)
                     msg = f"✅ Dropped {before} rows with nulls in '{mv_col}'"
@@ -864,11 +979,14 @@ elif page == "🧹 Clean Data":
                     df[mv_col] = col_data.fillna(col_data.median())
                     msg = f"✅ Filled '{mv_col}' nulls with median ({col_data.median():.4g})"
                 elif mv_strat == "Fill with mode":
-                    mode_val = col_data.mode()[0]
+                    mode_val = col_data.mode()[0]   # most frequent value; works for numeric or text columns
                     df[mv_col] = col_data.fillna(mode_val)
                     msg = f"✅ Filled '{mv_col}' nulls with mode ({mode_val})"
                 elif mv_strat == "Fill with constant" and mv_const != "":
                     try:
+                        # Coerce the typed-in text to a number when the target
+                        # column is numeric, so we don't turn an int column into
+                        # an object column just by filling with "0" (a string).
                         fill = float(mv_const) if pd.api.types.is_numeric_dtype(col_data) else mv_const
                     except ValueError:
                         fill = mv_const
@@ -881,7 +999,7 @@ elif page == "🧹 Clean Data":
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 3. Drop columns
+        # 3. Drop columns — remove one or more columns entirely (e.g. IDs, free-text noise).
         st.markdown("<div class='clean-panel'><h4>🗑️ Drop Columns</h4>", unsafe_allow_html=True)
         drop_cols = st.multiselect("Select columns to drop", df.columns.tolist(), key="drop_cols")
         if drop_cols and st.button("Drop selected", key="apply_drop"):
@@ -891,7 +1009,7 @@ elif page == "🧹 Clean Data":
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 4. Rename column
+        # 4. Rename column — simple find/replace on a single column header.
         st.markdown("<div class='clean-panel'><h4>✏️ Rename Column</h4>", unsafe_allow_html=True)
         ren_from = st.selectbox("Column to rename", df.columns.tolist(), key="ren_from")
         ren_to   = st.text_input("New name", key="ren_to")
@@ -902,12 +1020,15 @@ elif page == "🧹 Clean Data":
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 5. Cast dtype
+        # 5. Cast dtype — force a column to int/float/str/datetime.
         st.markdown("<div class='clean-panel'><h4>🔁 Change Column Type</h4>", unsafe_allow_html=True)
         cast_col   = st.selectbox("Column", df.columns.tolist(), key="cast_col")
         cast_dtype = st.selectbox("Target type", ["int", "float", "str", "datetime"], key="cast_dtype")
         if st.button("Cast", key="apply_cast"):
             try:
+                # Datetime needs pd.to_datetime (astype("datetime") doesn't parse
+                # strings); errors="coerce" turns unparseable values into NaT
+                # instead of raising, so one bad row doesn't kill the whole cast.
                 if cast_dtype == "datetime":
                     df[cast_col] = pd.to_datetime(df[cast_col], errors="coerce")
                 else:
@@ -915,11 +1036,12 @@ elif page == "🧹 Clean Data":
                 st.session_state.df = df
                 st.session_state.clean_log.append(f"✅ Cast '{cast_col}' to {cast_dtype}")
             except Exception as exc:
+                # e.g. casting "abc" to int — surface the real pandas error to the user.
                 st.error(f"Could not cast: {exc}")
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 6. Filter rows
+        # 6. Filter rows — keep only rows matching a simple numeric comparison.
         st.markdown("<div class='clean-panel'><h4>🔍 Filter Rows</h4>", unsafe_allow_html=True)
         num_cols = df.select_dtypes(include="number").columns.tolist()
         if num_cols:
@@ -928,6 +1050,9 @@ elif page == "🧹 Clean Data":
             flt_val = st.number_input("Value", key="flt_val")
             if st.button("Apply filter", key="apply_flt"):
                 before = len(df)
+                # Build a pandas query string like "`age` >= 18" and evaluate it.
+                # Backticks around the column name protect against spaces/special
+                # characters in the header.
                 expr   = f"`{flt_col}` {flt_op} {flt_val}"
                 df     = df.query(expr).reset_index(drop=True)
                 st.session_state.df = df
@@ -938,7 +1063,8 @@ elif page == "🧹 Clean Data":
             st.caption("No numeric columns available.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 7. Reset & Download
+        # 7. Reset & Download — undo everything back to the original upload,
+        # or grab the CSV as it stands right now (mirrors the top banner button).
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         rc1, rc2 = st.columns(2)
         with rc1:
@@ -957,10 +1083,14 @@ elif page == "🧹 Clean Data":
             )
 
     with prev:
+        # Right-hand column: always reflects the *current* `df`, so every
+        # button click on the left is visible here immediately after the rerun.
         st.markdown("#### Live Preview")
         st.dataframe(df.head(50), use_container_width=True, height=340)
 
-        # Missing-value heatmap summary
+        # Missing-value heatmap summary — a compact table of just the columns
+        # that still have nulls, built as a small pandas method chain:
+        # count nulls → rename → to a DataFrame → add a Pct column → keep only rows with Missing > 0.
         if df.isna().any().any():
             st.markdown("#### Missing-value breakdown")
             miss = (df.isna().sum()
@@ -970,7 +1100,8 @@ elif page == "🧹 Clean Data":
                       .query("Missing > 0"))
             st.dataframe(miss, use_container_width=True)
 
-        # Clean log
+        # Clean log — running audit trail of every action applied this
+        # session, newest first, so the user can see exactly what happened.
         if st.session_state.clean_log:
             st.markdown("#### Cleaning log")
             for entry in reversed(st.session_state.clean_log):
@@ -979,6 +1110,9 @@ elif page == "🧹 Clean Data":
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Guard — all remaining pages need a loaded dataframe
+# Dataset Preview, Statistics, Visualizations, AI Assistant and Export Report
+# all share this single `else` branch and the same "no data → warn and stop"
+# check, so it only needs to be written once instead of on every page.
 # ══════════════════════════════════════════════════════════════════════════════
 else:
     df = st.session_state.df
@@ -987,6 +1121,8 @@ else:
         st.stop()
 
     # ── Dataset Preview ──────────────────────────────────────────────────────
+    # Read-only exploration of the raw table: a searchable data grid, plus a
+    # per-column "profile card" view (type, uniqueness, missingness).
     if page == "🔍 Dataset Preview":
         st.markdown(f"""
         <div class='explore-hero'>
@@ -1009,6 +1145,8 @@ else:
         tab_table, tab_cols = st.tabs(["📋 Data Table", "🧬 Column Details"])
 
         with tab_table:
+            # Simple case-insensitive substring filter on column *names* (not
+            # cell values) — lets the user narrow a wide table down quickly.
             search = st.text_input("🔎 Search columns", placeholder="Type a column name to filter the view…")
             shown_df = df
             if search.strip():
@@ -1020,11 +1158,18 @@ else:
             st.dataframe(shown_df, use_container_width=True, height=460)
 
         with tab_cols:
+            # Build one "chip" card per column summarizing its dtype, unique
+            # count, and missing-value rate. Card HTML is accumulated into a
+            # list and joined once at the end (one st.markdown call) rather
+            # than calling st.markdown per column, which is both faster and
+            # lets the CSS grid lay all cards out together.
             type_map = {"num": ("Numeric", "type-num"), "obj": ("Text", "type-obj"),
                         "date": ("Date", "type-date"), "bool": ("Boolean", "type-bool")}
             chips = []
             for col in df.columns:
                 s = df[col]
+                # Order matters: bool must be checked before numeric, since
+                # pandas boolean columns also satisfy is_numeric_dtype.
                 if pd.api.types.is_bool_dtype(s):
                     tkey = "bool"
                 elif pd.api.types.is_datetime64_any_dtype(s):
@@ -1037,6 +1182,7 @@ else:
                 nulls = int(s.isna().sum())
                 pct_missing = round(nulls / len(df) * 100, 1) if len(df) else 0
                 uniq = int(s.nunique())
+                # Traffic-light bar color based on how much of the column is missing.
                 bar_color = "#f87171" if pct_missing > 20 else ("#fbbf24" if pct_missing > 0 else "#22d3a5")
                 chips.append(f"""
                 <div class='col-chip'>
