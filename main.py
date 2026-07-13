@@ -236,6 +236,87 @@ summary { font-weight: 600; color: var(--text) !important; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── File uploader dropzone ── */
+[data-testid="stFileUploaderDropzone"] {
+    background: linear-gradient(180deg, rgba(99,102,241,.06) 0%, rgba(99,102,241,.02) 100%) !important;
+    border: 1.5px dashed var(--border) !important;
+    border-radius: 16px !important;
+    padding: 8px !important;
+    transition: border-color .2s, background .2s;
+}
+[data-testid="stFileUploaderDropzone"]:hover {
+    border-color: var(--accent) !important;
+    background: linear-gradient(180deg, rgba(99,102,241,.1) 0%, rgba(99,102,241,.03) 100%) !important;
+}
+[data-testid="stFileUploaderDropzone"] button {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+[data-testid="stFileUploaderDropzoneInstructions"] span,
+[data-testid="stFileUploaderDropzoneInstructions"] small {
+    color: var(--muted) !important;
+}
+[data-testid="stFileUploaderFile"] {
+    background: var(--card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 10px !important;
+}
+
+/* ── Upload empty-state ── */
+.upload-empty {
+    text-align: center;
+    padding: 10px 20px 4px;
+}
+.upload-empty .icon {
+    font-size: 2.6rem;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 6px 18px rgba(99,102,241,.35));
+}
+.upload-empty .title { font-weight: 700; color: #fff; font-size: 1.05rem; margin-bottom: 4px; }
+.upload-empty .desc  { color: var(--muted); font-size: .87rem; max-width: 420px; margin: 0 auto; line-height: 1.6; }
+
+/* ── Upload success banner ── */
+.upload-success {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, rgba(34,211,165,.12) 0%, rgba(34,211,165,.03) 100%);
+    border: 1px solid rgba(34,211,165,.35);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 22px;
+}
+.upload-success .check {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: rgba(34,211,165,.18); color: var(--success);
+    display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+}
+.upload-success .fname { font-weight: 700; color: #fff; font-size: .98rem; word-break: break-all; }
+.upload-success .fmeta { color: var(--muted); font-size: .82rem; margin-top: 2px; }
+
+/* ── Requirement chip row ── */
+.req-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+.req-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 99px; padding: 5px 12px; font-size: .78rem; color: var(--muted);
+}
+
+/* ── Next-step CTA card ── */
+.next-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    height: 100%;
+}
+.next-card .n-icon { font-size: 1.3rem; margin-bottom: 6px; }
+.next-card .n-title { font-weight: 700; color: #fff; font-size: .9rem; margin-bottom: 3px; }
+.next-card .n-desc { color: var(--muted); font-size: .8rem; line-height: 1.5; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -390,13 +471,34 @@ if page == "🏠 Home":
 # UPLOAD
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "📂 Upload Dataset":
-    section("STEP 1", "Upload your dataset")
+    st.markdown("""
+    <div class='hero' style='padding:40px 44px;margin-bottom:28px'>
+        <div class='hero-title' style='font-size:2rem'>Bring in your <span>dataset</span></div>
+        <div class='hero-sub'>Drop a CSV below. We'll auto-detect types, strip stray whitespace,
+        and get it ready for cleaning and analysis — all in a couple of seconds.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     uploaded = st.file_uploader(
         "Drop a CSV file here or click to browse",
         type=["csv"],
         help="Only CSV files are supported.",
+        label_visibility="collapsed",
     )
+
+    if not uploaded:
+        st.markdown("""
+        <div class='upload-empty'>
+            <div class='icon'>📄</div>
+            <div class='title'>No file selected yet</div>
+            <div class='desc'>Drag a .csv file into the box above, or click it to browse your computer.</div>
+            <div class='req-row'>
+                <div class='req-chip'>📐 Comma-separated</div>
+                <div class='req-chip'>🔤 UTF-8 or CP1252</div>
+                <div class='req-chip'>🚀 Cached for speed</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     if uploaded:
         with st.spinner("Reading and auto-cleaning…"):
@@ -408,7 +510,18 @@ elif page == "📂 Upload Dataset":
         st.session_state.filename = uploaded.name
         st.session_state.clean_log = ["✅ Initial auto-clean applied (whitespace stripped, obvious duplicates removed)"]
 
-        st.success(f"**{uploaded.name}** loaded — {df.shape[0]:,} rows × {df.shape[1]} columns")
+        size_kb = len(uploaded.getvalue()) / 1024
+        size_txt = f"{size_kb:,.1f} KB" if size_kb < 1024 else f"{size_kb/1024:,.2f} MB"
+
+        st.markdown(f"""
+        <div class='upload-success'>
+            <div class='check'>✓</div>
+            <div>
+                <div class='fname'>{uploaded.name}</div>
+                <div class='fmeta'>{size_txt} · {df.shape[0]:,} rows · {df.shape[1]} columns · loaded successfully</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Rows",            f"{df.shape[0]:,}")
@@ -417,10 +530,37 @@ elif page == "📂 Upload Dataset":
         c4.metric("Duplicate rows",  int(df.duplicated().sum()))
 
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
-        st.subheader("Preview (first 10 rows)")
-        st.dataframe(df.head(10), use_container_width=True)
-    else:
-        st.info("👆 Upload a CSV file to get started.")
+
+        prev_tab, types_tab = st.tabs(["👁️ Preview", "🧬 Column types"])
+        with prev_tab:
+            st.dataframe(df.head(10), use_container_width=True)
+        with types_tab:
+            dtype_df = df.dtypes.rename("Type").astype(str).to_frame()
+            dtype_df["Nulls"] = df.isna().sum()
+            dtype_df["Unique values"] = df.nunique()
+            st.dataframe(dtype_df, use_container_width=True)
+
+        st.markdown("<div class='div'></div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-label'>NEXT UP</div>", unsafe_allow_html=True)
+
+        n1, n2, n3 = st.columns(3)
+        next_steps = [
+            (n1, "🧹", "Clean it up", "Handle nulls, duplicates & types.", "🧹 Clean Data"),
+            (n2, "📊", "Check the stats", "Numeric summaries & missing values.", "📊 Statistics"),
+            (n3, "🤖", "Ask the AI", "Get instant plain-English insights.", "🤖 AI Assistant"),
+        ]
+        for col, icon, title, desc, target in next_steps:
+            with col:
+                st.markdown(f"""
+                <div class='next-card'>
+                    <div class='n-icon'>{icon}</div>
+                    <div class='n-title'>{title}</div>
+                    <div class='n-desc'>{desc}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button("Go →", key=f"go_{target}", use_container_width=True):
+                    st.session_state.redirect_to = target
+                    st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
