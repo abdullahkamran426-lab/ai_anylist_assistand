@@ -332,6 +332,22 @@ Sends a combined prompt — dataset context and user question — to the model a
 
 ---
 
+## 🛠 Technology Stack
+
+| Technology | Why It's Used |
+|:---|:---|
+| **Python** | Primary language - extensive data science ecosystem, easy to read, great for rapid prototyping |
+| **Streamlit** | Web UI framework - enables building interactive data apps with pure Python, no HTML/CSS/JS knowledge required, perfect for data tools |
+| **Pandas** | Data manipulation - industry-standard for CSV loading, cleaning, and statistical analysis, powerful DataFrame operations |
+| **Plotly** | Interactive visualizations - creates beautiful, interactive charts that work in browsers, better than static matplotlib for web apps |
+| **OpenRouter (Llama 3.1)** | AI integration - provides access to state-of-the-art LLMs for natural-language data analysis, cost-effective alternative to OpenAI |
+| **FPDF** | PDF generation - lightweight library for creating downloadable reports without complex dependencies |
+| **OpenAI SDK** | AI client - OpenRouter-compatible client for making API calls to LLMs with proper error handling |
+| **python-dotenv** | Environment management - securely loads API keys from `.env` files, prevents hardcoding sensitive data |
+| **NumPy** | Numerical computing - efficient array operations, used by pandas for numeric column detection and statistics |
+
+---
+
 ## ⚙️ Configuration Reference
 
 | Variable | File | Description |
