@@ -14,6 +14,7 @@ interaction model.
 """
 
 from pathlib import Path          # not currently used directly, kept for future file-path helpers
+import html                        # escapes column names before they're dropped into raw HTML chips
 import streamlit as st            # the web app framework that renders every widget on the page
 import pandas as pd                # dataframe engine used for all data manipulation
 import numpy as np                 # numeric helpers (currently only needed indirectly via pandas)
@@ -444,19 +445,32 @@ summary { font-weight: 600; color: var(--text) !important; }
 .explore-hero .eh-sub { color: var(--muted); font-size: .84rem; margin-top: 2px; }
 
 /* ── Column chip grid (Dataset Preview → Column Details) ── */
-.col-chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+/* auto-fill lets as many chips per row as fit at 170px each, so all
+   columns are visible with minimal scrolling instead of stacking 1-per-row. */
+.col-chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 .col-chip {
     background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 14px 16px; transition: border-color .15s;
+    padding: 12px 14px; transition: border-color .15s;
+    /* Fixed, "normal" height for every card regardless of column-name length —
+       content is arranged with flexbox so the health bar always sits at the
+       bottom instead of the card stretching to fit long names or wrapped text. */
+    height: 108px; box-sizing: border-box;
+    display: flex; flex-direction: column; justify-content: space-between;
+    overflow: hidden;
 }
 .col-chip:hover { border-color: var(--accent); }
-.col-chip .cc-name { font-weight: 700; color: #fff; font-size: .86rem; margin-bottom: 8px; word-break: break-all; }
-.col-chip .cc-type {
-    display: inline-block; font-size: .66rem; font-weight: 700; padding: 2px 9px;
-    border-radius: 99px; margin-bottom: 8px; letter-spacing: .03em; text-transform: uppercase;
+.col-chip .cc-name {
+    font-weight: 700; color: #fff; font-size: .82rem; line-height: 1.2;
+    /* Long column names get an ellipsis instead of wrapping and pushing the
+       card taller — a tooltip via `title` still shows the full name on hover. */
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.col-chip .cc-meta { color: var(--muted); font-size: .76rem; margin-top: 4px; }
-.col-chip .cc-bar { background: rgba(255,255,255,.07); border-radius: 99px; height: 4px; overflow: hidden; margin-top: 8px; }
+.col-chip .cc-type {
+    display: inline-block; font-size: .64rem; font-weight: 700; padding: 2px 9px;
+    border-radius: 99px; letter-spacing: .03em; text-transform: uppercase; width: fit-content;
+}
+.col-chip .cc-meta { color: var(--muted); font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.col-chip .cc-bar { background: rgba(255,255,255,.07); border-radius: 99px; height: 4px; overflow: hidden; }
 .col-chip .cc-bar-fill { height: 100%; border-radius: 99px; }
 .type-num  { background: rgba(99,102,241,.16); color: #818cf8; }
 .type-obj  { background: rgba(34,211,165,.16); color: #22d3a5; }
@@ -641,7 +655,7 @@ with st.sidebar:
 
         # Wipes every piece of state tied to the current dataset so the app
         # behaves as if nothing was ever uploaded, then reruns to reflect it.
-        if st.button("🗑️ Clear dataset", key="clear_dataset", use_container_width=True):
+        if st.button("🗑️ Clear dataset", key="clear_dataset", width='stretch'):
             st.session_state.df = None
             st.session_state.original_df = None
             st.session_state.filename = None
@@ -820,12 +834,12 @@ elif page == "📂 Upload Dataset":
         # Two views into the data: a row preview, and a per-column dtype summary.
         prev_tab, types_tab = st.tabs(["👁️ Preview", "🧬 Column types"])
         with prev_tab:
-            st.dataframe(df.head(10), use_container_width=True)
+            st.dataframe(df.head(10), width='stretch')
         with types_tab:
             dtype_df = df.dtypes.rename("Type").astype(str).to_frame()
             dtype_df["Nulls"] = df.isna().sum()
             dtype_df["Unique values"] = df.nunique()
-            st.dataframe(dtype_df, use_container_width=True)
+            st.dataframe(dtype_df, width='stretch')
 
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         st.markdown("<div class='section-label'>NEXT UP</div>", unsafe_allow_html=True)
@@ -848,7 +862,7 @@ elif page == "📂 Upload Dataset":
                     <div class='n-desc'>{desc}</div>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button("Go →", key=f"go_{target}", use_container_width=True):
+                if st.button("Go →", key=f"go_{target}", width='stretch'):
                     st.session_state.redirect_to = target
                     st.rerun()
 
@@ -915,7 +929,7 @@ elif page == "🧹 Clean Data":
             data=csv_bytes,
             file_name=clean_filename,
             mime="text/csv",
-            use_container_width=True,
+            width='stretch',
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1068,7 +1082,7 @@ elif page == "🧹 Clean Data":
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         rc1, rc2 = st.columns(2)
         with rc1:
-            if st.button("↩️ Reset to original", key="reset_clean", use_container_width=True):
+            if st.button("↩️ Reset to original", key="reset_clean", width='stretch'):
                 st.session_state.df = st.session_state.original_df.copy()
                 st.session_state.clean_log = ["↩️ Reset to original dataset"]
                 st.rerun()
@@ -1079,14 +1093,14 @@ elif page == "🧹 Clean Data":
                 file_name=clean_filename,
                 mime="text/csv",
                 key="dl_csv_bottom",
-                use_container_width=True,
+                width='stretch',
             )
 
     with prev:
         # Right-hand column: always reflects the *current* `df`, so every
         # button click on the left is visible here immediately after the rerun.
         st.markdown("#### Live Preview")
-        st.dataframe(df.head(50), use_container_width=True, height=340)
+        st.dataframe(df.head(50), width='stretch', height=340)
 
         # Missing-value heatmap summary — a compact table of just the columns
         # that still have nulls, built as a small pandas method chain:
@@ -1098,7 +1112,7 @@ elif page == "🧹 Clean Data":
                       .to_frame()
                       .assign(Pct=lambda d: (d["Missing"]/len(df)*100).round(2))
                       .query("Missing > 0"))
-            st.dataframe(miss, use_container_width=True)
+            st.dataframe(miss, width='stretch')
 
         # Clean log — running audit trail of every action applied this
         # session, newest first, so the user can see exactly what happened.
@@ -1155,7 +1169,7 @@ else:
                     shown_df = df[matches]
                 else:
                     st.warning(f"No columns match '{search}'.")
-            st.dataframe(shown_df, use_container_width=True, height=460)
+            st.dataframe(shown_df, width='stretch', height=460)
 
         with tab_cols:
             # Build one "chip" card per column summarizing its dtype, unique
@@ -1185,17 +1199,23 @@ else:
                 # Traffic-light bar color based on how much of the column is missing.
                 bar_color = "#f87171" if pct_missing > 20 else ("#fbbf24" if pct_missing > 0 else "#22d3a5")
                 # Bar WIDTH represents completeness (100% - missing%), not missing%
-                # directly — same semantics as the sidebar's "Data health" bar. A
-                # fully clean column fills the whole bar green; a column that's
-                # mostly missing shows a short, red bar. Floored at 2% so a
-                # completely empty column still renders a visible sliver.
-                completeness = round(100 - pct_missing, 1)
+                # directly — a fully clean column should fill the whole bar green;
+                # a column that's mostly missing should show a short, red bar.
+                # Clamped to [2, 100] so a completely empty column still renders a
+                # visible sliver instead of vanishing entirely.
+                completeness = max(0.0, min(100.0, 100 - pct_missing))
+                bar_width = max(completeness, 2)
+                # Escaping the column name protects against any quote/angle-bracket
+                # character in a real-world CSV header breaking out of the HTML
+                # attribute it sits in — which is exactly what causes a card's
+                # raw markup to spill out as visible text instead of rendering.
+                safe_col = html.escape(str(col))
                 chips.append(f"""
                 <div class='col-chip'>
-                    <div class='cc-name'>{col}</div>
+                    <div class='cc-name' title='{safe_col}'>{safe_col}</div>
                     <span class='cc-type {css_class}'>{label}</span>
                     <div class='cc-meta'>{uniq:,} unique · {nulls:,} missing ({pct_missing}%)</div>
-                    <div class='cc-bar'><div class='cc-bar-fill' style='width:{max(completeness,2)}%;background:{bar_color}'></div></div>
+                    <div class='cc-bar'><div class='cc-bar-fill' style='width:{bar_width}%;background:{bar_color}'></div></div>
                 </div>
                 """)
             st.markdown(f"<div class='col-chip-grid'>{''.join(chips)}</div>", unsafe_allow_html=True)
@@ -1227,26 +1247,12 @@ else:
         tabs = st.tabs(["📐 Numeric Stats", "❓ Missing Values", "🏷️ Value Counts"])
 
         with tabs[0]:
-            # pandas .describe() on numeric columns only: count/mean/std/min/
-            # quartiles/max. Returns None (or empty) when there are zero
-            # numeric columns in the (possibly sampled) dataframe.
             stats = get_numeric_stats(analysis_df)
             if stats is not None and not stats.empty:
                 st.markdown("<div class='stat-panel'><h4>📐 Summary statistics</h4>", unsafe_allow_html=True)
-                st.dataframe(stats, use_container_width=True)
+                st.dataframe(stats, width='stretch')
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                # "Jump to chart" shortcut: picking a column here and clicking
-                # the button stores the choice in session_state and switches
-                # the active page to Visualizations on the next rerun — the
-                # same redirect_to mechanism the sidebar reads at the top of
-                # the script. IMPORTANT: this only *stages* the selection;
-                # st.radio's return value is never treated as an implicit
-                # "go" signal, because a radio always reports a value (it
-                # defaults to the first option even before the user touches
-                # it). Requiring this explicit button click is what fixes the
-                # original "Statistics won't open" bug, where the page used
-                # to auto-redirect to Visualizations on its very first render.
                 st.markdown("<div class='stat-panel'><h4>📈 Visualize a column</h4>", unsafe_allow_html=True)
                 stat_cols = stats.columns.tolist()
                 chosen_stat = st.radio(
@@ -1260,14 +1266,12 @@ else:
                     st.session_state.selected_chart_column = chosen_stat
                     st.session_state.selected_chart_type = "📈 Histogram"
                     st.session_state.redirect_to = "📈 Visualizations"
-                    st.rerun()  # re-run now so the sidebar picks up redirect_to immediately
+                    st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
             else:
                 st.info("No numeric columns found.")
 
         with tabs[1]:
-            # Per-column null count + percentage, sorted worst-first so the
-            # columns most in need of cleaning surface at the top.
             miss = analysis_df.isna().sum().rename("Missing").to_frame()
             miss["Pct (%)"] = (miss["Missing"] / len(analysis_df) * 100).round(2)
             miss = miss.sort_values("Missing", ascending=False)
@@ -1278,12 +1282,6 @@ else:
                 <h4>❓ Missing values {"— none found 🎉" if total_missing == 0 else f"— {total_missing:,} cells across {int((miss['Missing']>0).sum())} column(s)"}</h4>
             """, unsafe_allow_html=True)
             if total_missing > 0:
-                # Draw one horizontal bar per column with missing data, width
-                # scaled relative to whichever column is worst (max_missing)
-                # so bars are visually comparable. A floor of 2% keeps even
-                # tiny counts visible instead of collapsing to a sliver.
-                # All rows are built into one HTML string and rendered in a
-                # single st.markdown call — much faster than one call per row.
                 max_missing = max(int(miss["Missing"].max()), 1)
                 rows_html = ""
                 for col, row in miss[miss["Missing"] > 0].iterrows():
@@ -1297,21 +1295,15 @@ else:
                     """
                 st.markdown(rows_html, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
-            st.dataframe(miss, use_container_width=True)
+            st.dataframe(miss, width='stretch')
 
         with tabs[2]:
-            # Value counts only make sense for non-numeric columns (a numeric
-            # column's "categories" would usually just be near-unique values).
             cat_cols = df.select_dtypes(exclude="number").columns.tolist()
             if cat_cols:
                 chosen = st.selectbox("Column", cat_cols)
                 vc = df[chosen].value_counts().rename("Count").to_frame()
                 vc["Pct (%)"] = (vc["Count"] / len(df) * 100).round(2)
 
-                # Mini "leaderboard": top 10 categories as ranked horizontal
-                # bars, width relative to the single most frequent category —
-                # same one-string/one-markdown-call pattern as the missing
-                # values tab above, for the same performance reason.
                 st.markdown(f"<div class='stat-panel'><h4>🏷️ Top values in '{chosen}'</h4>", unsafe_allow_html=True)
                 top = vc.head(10)
                 max_count = int(top["Count"].max()) if not top.empty else 1
@@ -1328,7 +1320,7 @@ else:
                 st.markdown(rows_html, unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                st.dataframe(vc, use_container_width=True)
+                st.dataframe(vc, width='stretch')
             else:
                 st.info("No categorical columns found.")
 
@@ -1347,14 +1339,8 @@ else:
         nums = df.select_dtypes(include="number").columns.tolist()
         cats = df.select_dtypes(exclude="number").columns.tolist()
 
-        # Pick a starting chart type: honor a pending redirect from Statistics
-        # (selected_chart_type) if one was set, otherwise default to Bar.
         default_chart = st.session_state.selected_chart_type or "📊 Bar"
         chart_options = ["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"]
-        # st.segmented_control is a newer Streamlit widget and may not exist
-        # on older installs, and some versions don't accept label_visibility
-        # for it — hasattr + a fallback try/except keeps this working across
-        # Streamlit versions instead of hard-crashing on an unsupported kwarg.
         if hasattr(st, "segmented_control"):
             try:
                 chart = st.segmented_control(
@@ -1371,9 +1357,7 @@ else:
             )
 
         preselect_col = st.session_state.selected_chart_column
-        # Consume the one-time preselection immediately after reading it, so
-        # a later visit to this page (without a fresh redirect) starts clean
-        # instead of forever re-selecting whatever column Statistics last sent.
+        # Consume the one-time preselection so later visits start fresh.
         st.session_state.selected_chart_type = None
         st.session_state.selected_chart_column = None
 
@@ -1392,12 +1376,6 @@ else:
             st.markdown("<div class='stat-panel'><h4>⚙️ Chart settings</h4>", unsafe_allow_html=True)
             selected_col = None
             x_col = y_col = None
-            # Each branch below picks the column list appropriate for that
-            # chart type (categorical for Bar/Pie, numeric for Histogram,
-            # two numeric columns for Scatter). Where a column arrived via
-            # preselect_col (the Statistics "visualize this column" jump),
-            # its index is looked up so the selectbox opens on that column
-            # instead of always defaulting to the first one in the list.
             if "Bar" in chart and cats:
                 idx = cats.index(preselect_col) if preselect_col in cats else 0
                 selected_col = st.selectbox("Category column", cats, index=idx)
@@ -1411,8 +1389,6 @@ else:
                 x_col = st.selectbox("X axis", nums)
                 y_col = st.selectbox("Y axis", nums, index=1)
             else:
-                # e.g. Pie/Bar chosen but the dataset has no categorical
-                # columns, or Scatter chosen with fewer than 2 numeric columns.
                 st.caption("Not enough columns of the required type for this chart.")
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1423,13 +1399,13 @@ else:
             """, unsafe_allow_html=True)
 
             if "Bar" in chart and cats and selected_col:
-                st.plotly_chart(plot_bar(df, selected_col), use_container_width=True)
+                st.plotly_chart(plot_bar(df, selected_col), width='stretch')
             elif "Histogram" in chart and nums and selected_col:
-                st.plotly_chart(plot_histogram(df, selected_col), use_container_width=True)
+                st.plotly_chart(plot_histogram(df, selected_col), width='stretch')
             elif "Pie" in chart and cats and selected_col:
-                st.plotly_chart(plot_pie(df, selected_col), use_container_width=True)
+                st.plotly_chart(plot_pie(df, selected_col), width='stretch')
             elif "Scatter" in chart and x_col and y_col:
-                st.plotly_chart(plot_scatter(df, x_col, y_col), use_container_width=True)
+                st.plotly_chart(plot_scatter(df, x_col, y_col), width='stretch')
             else:
                 st.info("Not enough columns of the required type for this chart.")
 
@@ -1482,7 +1458,7 @@ else:
         chip_cols = st.columns(len(suggestions))
         for col, sug in zip(chip_cols, suggestions):
             with col:
-                if st.button(sug, key=f"chip_{sug}", use_container_width=True):
+                if st.button(sug, key=f"chip_{sug}", width='stretch'):
                     st.session_state.ai_prefill = sug.split(" ", 1)[1]
 
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
@@ -1539,7 +1515,7 @@ else:
             )
             c1, c2 = st.columns([5, 1])
             with c2:
-                submitted = st.form_submit_button("Ask AI →", use_container_width=True)
+                submitted = st.form_submit_button("Ask AI →", width='stretch')
 
         if submitted:
             st.session_state.ai_prefill = ""
