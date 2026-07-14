@@ -121,34 +121,43 @@ The app will open at `http://localhost:8501`.
 ```mermaid
 flowchart TD
     A([👤 User]) --> B[Launch Streamlit App]
-    B --> C{Sidebar Navigation}
+    B --> C["main.py → initialize_session_state()"]
+    C --> D["main.py → inject_css()"]
+    D --> E["main.py → render_sidebar()"]
+    E --> F{Sidebar Navigation}
 
-    C --> D[📤 Upload CSV]
-    D --> E["load_data() — encoding fallback"]
-    E --> F["clean_data() — normalize types"]
-    F --> G[(📦 Session State — DataFrame)]
+    F --> G[📤 Upload CSV]
+    G --> H["pages.render_upload_page()"]
+    H --> I["analysis.load_data() — encoding fallback"]
+    I --> J["analysis.clean_data() — normalize types"]
+    J --> K[(📦 Session State — DataFrame)]
 
-    G --> H[👁 Dataset Preview]
-    G --> I[📊 Statistics]
-    G --> J[📈 Visualizations]
-    G --> K[🤖 AI Assistant]
+    K --> L[👁 Dataset Preview]
+    K --> M[📊 Statistics]
+    K --> N[📈 Visualizations]
+    K --> O[🤖 AI Assistant]
 
-    I  --> I1["get_numeric_stats()"]
-    J  --> J1["plot_bar / plot_histogram / plot_pie / plot_scatter"]
+    L  --> L1["pages.render_dataset_preview_page()"]
+    M  --> M1["pages.render_statistics_page()"]
+    M1 --> M2["analysis.get_numeric_stats()"]
+    N  --> N1["pages.render_visualizations_page()"]
+    N1 --> N2["visualization.plot_bar / plot_histogram / plot_pie / plot_scatter"]
 
-    K  --> L["get_summary()"]
-    L  --> M["ask_ai() → OpenRouter API"]
-    M  --> N["Llama 3.1 8B — Response"]
-    N  --> O[(💾 session_state.answer)]
+    O  --> O1["pages.render_ai_assistant_page()"]
+    O1 --> O2["analysis.get_summary()"]
+    O2 --> O3["ai_helper.ask_ai() → OpenRouter API"]
+    O3 --> O4["Llama 3.1 8B — Response"]
+    O4 --> O5[(💾 session_state.answer)]
 
-    O  --> P[📄 Export Report]
-    P  --> Q["export_to_pdf()"]
-    Q  --> R([⬇ Download PDF])
+    O5  --> P[📄 Export Report]
+    P  --> P1["pages.render_export_page()"]
+    P1 --> P2["analysis.export_to_pdf()"]
+    P2 --> Q([⬇ Download PDF])
 
     style A  fill:#7C5CFC,color:#fff,stroke:none
-    style G  fill:#1C2435,color:#DCE4F0,stroke:#2D3A52
-    style O  fill:#1C2435,color:#DCE4F0,stroke:#2D3A52
-    style R  fill:#00D68F,color:#fff,stroke:none
+    style K  fill:#1C2435,color:#DCE4F0,stroke:#2D3A52
+    style O5 fill:#1C2435,color:#DCE4F0,stroke:#2D3A52
+    style Q  fill:#00D68F,color:#fff,stroke:none
 ```
 
 ---
