@@ -582,93 +582,25 @@ def render_dataset_preview_page():
     st.markdown("<div class='div'></div>", unsafe_allow_html=True)
 
     # ------------------------------------------------------------------------
-    # TABS
-    # Data Table and Column Details views
+    # DATA TABLE VIEW
+    # Full table view with search functionality
     # ------------------------------------------------------------------------
-    tab_table, tab_cols = st.tabs(["📋 Data Table", "🧬 Column Details"])
+    # Search columns functionality
+    search = st.text_input(
+        "🔎 Search Columns",
+        placeholder="Type a column name..."
+    )
 
-    # ========================================================================
-    # DATA TABLE TAB
-    # ========================================================================
-    with tab_table:
-        # Search columns functionality
-        search = st.text_input(
-            "🔎 Search Columns",
-            placeholder="Type a column name..."
-        )
+    shown_df = df
 
-        shown_df = df
+    if search.strip():
+        matches = [c for c in df.columns if search.lower() in c.lower()]
+        if matches:
+            shown_df = df[matches]
+        else:
+            st.warning(f"No columns match '{search}'.")
 
-        if search.strip():
-            matches = [c for c in df.columns if search.lower() in c.lower()]
-            if matches:
-                shown_df = df[matches]
-            else:
-                st.warning(f"No columns match '{search}'.")
-
-        st.dataframe(shown_df, width="stretch", height=460)
-
-    # ========================================================================
-    # COLUMN DETAILS TAB
-    # ========================================================================
-    with tab_cols:
-        # Type mapping for column badges
-        type_map = {
-            "num": ("Numeric", "type-num"),
-            "obj": ("Text", "type-obj"),
-            "date": ("Date", "type-date"),
-            "bool": ("Boolean", "type-bool"),
-        }
-
-        cards = []
-        total_rows = len(df)
-
-        # Generate a card for each column
-        for col in df.columns:
-            s = df[col]
-
-            # Determine column type
-            if pd.api.types.is_bool_dtype(s):
-                label, css = type_map["bool"]
-            elif pd.api.types.is_datetime64_any_dtype(s):
-                label, css = type_map["date"]
-            elif pd.api.types.is_numeric_dtype(s):
-                label, css = type_map["num"]
-            else:
-                label, css = type_map["obj"]
-
-            # Calculate statistics
-            unique = int(s.nunique(dropna=True))
-            missing = int(s.isna().sum())
-            pct_missing = round((missing / total_rows) * 100, 1) if total_rows else 0
-            completeness = 100 - pct_missing
-
-            # Color based on missing percentage
-            if pct_missing == 0:
-                color = "#22d3a5"
-            elif pct_missing <= 20:
-                color = "#fbbf24"
-            else:
-                color = "#f87171"
-
-            # Build card HTML
-            cards.append(f"""
-            <div class='col-chip'>
-                <div class='cc-name' title='{col}'>{col}</div>
-                <span class='cc-type {css}'>{label}</span>
-                <div class='cc-meta'>
-                    {unique:,} unique · {missing:,} missing ({pct_missing}%)
-                </div>
-                <div class='cc-bar'>
-                    <div class='cc-bar-fill' style='width:{completeness}%;background:{color};'></div>
-                </div>
-            </div>
-            """)
-
-        st.markdown(
-            "<div class='col-chip-grid'>" + "".join(cards) + "</div>",
-            unsafe_allow_html=True,
-        )
+    st.dataframe(shown_df, width="stretch", height=460)
 
 
 def render_statistics_page():
