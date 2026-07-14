@@ -1,5 +1,6 @@
 import hashlib
 import io
+import tempfile
 
 import streamlit as st
 import pandas as pd
@@ -21,7 +22,7 @@ def load_data(file_bytes):
     except UnicodeDecodeError:
         try:
             df = pd.read_csv(io.BytesIO(file_bytes), encoding="cp1252")
-        except:
+        except UnicodeDecodeError:
             df = pd.read_csv(io.BytesIO(file_bytes), encoding="latin1")
     return df
 
@@ -29,6 +30,8 @@ def load_data(file_bytes):
 @st.cache_data
 def clean_data(df):
     """Cleans specific columns like Gross."""
+    # Copy to avoid mutating cached data
+    df = df.copy()
     if 'Gross' in df.columns:
         df['Gross'] = df['Gross'].replace(',', '', regex=True)
         df['Gross'] = pd.to_numeric(df['Gross'], errors='coerce')
@@ -63,12 +66,16 @@ def export_to_pdf(text_content, filename="AI_Analysis_Report.pdf"):
     """Exports AI insights to a downloadable PDF file."""
     # FPDF struggles with emojis, so we remove them
     clean_text = re.sub(r'[^\x00-\x7F]+', ' ', text_content)
-    
+
+    # Use temp file to avoid write permission issues and concurrent user conflicts
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp_filename = tmp.name
+
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt="AI Data Analysis Report", ln=True, align='C')
     pdf.ln(10)
     pdf.multi_cell(0, 10, txt=clean_text)
-    pdf.output(filename)
-    return filename
+    pdf.output(tmp_filename)
+    return tmp_filename

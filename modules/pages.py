@@ -254,10 +254,23 @@ def render_clean_data_page():
     then calls st.rerun() to redraw with updated data.
     """
     df = st.session_state.df
-    
+
     # Guard: this page is meaningless without data
     if df is None:
-        st.warning("Upload a dataset first.")
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,rgba(34,211,165,.12) 0%,rgba(34,211,165,.03) 100%);
+                    border:2px solid #22d3a5;border-radius:12px;padding:20px 24px;margin:20px 0'>
+            <div style='display:flex;align-items:center;gap:12px'>
+                <div style='font-size:1.5rem'>📂</div>
+                <div>
+                    <div style='font-weight:700;color:#fff;font-size:1rem'>Upload a dataset first</div>
+                    <div style='color:#94a3b8;font-size:.87rem;margin-top:2px'>
+                        Go to the Upload Dataset page to get started.
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         st.stop()
 
     section("DATA CLEANING", "Fix, reshape & prepare")
@@ -517,6 +530,24 @@ def render_dataset_preview_page():
     """
     df = st.session_state.df
 
+    # Guard: this page requires data
+    if df is None:
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,rgba(34,211,165,.12) 0%,rgba(34,211,165,.03) 100%);
+                    border:2px solid #22d3a5;border-radius:12px;padding:20px 24px;margin:20px 0'>
+            <div style='display:flex;align-items:center;gap:12px'>
+                <div style='font-size:1.5rem'>📂</div>
+                <div>
+                    <div style='font-weight:700;color:#fff;font-size:1rem'>Upload a dataset first</div>
+                    <div style='color:#94a3b8;font-size:.87rem;margin-top:2px'>
+                        Go to the Upload Dataset page to get started.
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.stop()
+
     # ------------------------------------------------------------------------
     # HERO STRIP
     # Compact hero banner with dataset info
@@ -646,6 +677,24 @@ def render_statistics_page():
     Numeric distributions, missing data, and category breakdowns.
     """
     df = st.session_state.df
+
+    # Guard: this page requires data
+    if df is None:
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,rgba(34,211,165,.12) 0%,rgba(34,211,165,.03) 100%);
+                    border:2px solid #22d3a5;border-radius:12px;padding:20px 24px;margin:20px 0'>
+            <div style='display:flex;align-items:center;gap:12px'>
+                <div style='font-size:1.5rem'>📂</div>
+                <div>
+                    <div style='font-weight:700;color:#fff;font-size:1rem'>Upload a dataset first</div>
+                    <div style='color:#94a3b8;font-size:.87rem;margin-top:2px'>
+                        Go to the Upload Dataset page to get started.
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.stop()
 
     # ------------------------------------------------------------------------
     # HERO STRIP
@@ -778,6 +827,24 @@ def render_visualizations_page():
     """
     df = st.session_state.df
 
+    # Guard: this page requires data
+    if df is None:
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,rgba(34,211,165,.12) 0%,rgba(34,211,165,.03) 100%);
+                    border:2px solid #22d3a5;border-radius:12px;padding:20px 24px;margin:20px 0'>
+            <div style='display:flex;align-items:center;gap:12px'>
+                <div style='font-size:1.5rem'>📂</div>
+                <div>
+                    <div style='font-weight:700;color:#fff;font-size:1rem'>Upload a dataset first</div>
+                    <div style='color:#94a3b8;font-size:.87rem;margin-top:2px'>
+                        Go to the Upload Dataset page to get started.
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.stop()
+
     # ------------------------------------------------------------------------
     # HERO STRIP
     # ------------------------------------------------------------------------
@@ -894,6 +961,24 @@ def render_ai_assistant_page():
     Natural-language Q&A with conversation history and suggested prompts.
     """
     df = st.session_state.df
+
+    # Guard: this page requires data
+    if df is None:
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,rgba(34,211,165,.12) 0%,rgba(34,211,165,.03) 100%);
+                    border:2px solid #22d3a5;border-radius:12px;padding:20px 24px;margin:20px 0'>
+            <div style='display:flex;align-items:center;gap:12px'>
+                <div style='font-size:1.5rem'>📂</div>
+                <div>
+                    <div style='font-weight:700;color:#fff;font-size:1rem'>Upload a dataset first</div>
+                    <div style='color:#94a3b8;font-size:.87rem;margin-top:2px'>
+                        Go to the Upload Dataset page to get started.
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.stop()
 
     # ------------------------------------------------------------------------
     # INITIALIZE CHAT STATE
@@ -1044,7 +1129,20 @@ def render_export_page():
 
     ans = st.session_state.get("answer")
     if not ans:
-        st.info("Run the AI Assistant first to generate content for the report.")
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,rgba(34,211,165,.12) 0%,rgba(34,211,165,.03) 100%);
+                    border:2px solid #22d3a5;border-radius:12px;padding:20px 24px;margin:20px 0'>
+            <div style='display:flex;align-items:center;gap:12px'>
+                <div style='font-size:1.5rem'>🤖</div>
+                <div>
+                    <div style='font-weight:700;color:#fff;font-size:1rem'>Run AI Assistant first</div>
+                    <div style='color:#94a3b8;font-size:.87rem;margin-top:2px'>
+                        Go to the AI Assistant page to generate content for the report.
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     else:
         # Show preview of AI analysis
         st.markdown("""

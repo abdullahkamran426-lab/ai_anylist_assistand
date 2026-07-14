@@ -12,6 +12,7 @@ else:
     client = OpenAI(
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
+        timeout=30.0,  # 30 second timeout to prevent hanging
     )
 
 def ask_ai(question, dataset_summary):
