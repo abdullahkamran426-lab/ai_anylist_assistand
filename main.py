@@ -13,7 +13,6 @@ lives in `st.session_state` so it survives Streamlit's rerun-on-every-
 interaction model.
 """
 
-from pathlib import Path          # not currently used directly, kept for future file-path helpers
 import streamlit as st            # the web app framework that renders every widget on the page
 import pandas as pd                # dataframe engine used for all data manipulation
 import numpy as np                 # numeric helpers (currently only needed indirectly via pandas)
