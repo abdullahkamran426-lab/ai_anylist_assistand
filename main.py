@@ -12,9 +12,7 @@ All page state (the loaded dataframe, chat history, chart selections, etc.)
 lives in `st.session_state` so it survives Streamlit's rerun-on-every-
 interaction model.
 """
-
-from pathlib import Path          # not currently used directly, kept for future file-path helpers
-import html                        # escapes column names before they're dropped into raw HTML chips
+import html
 import streamlit as st            # the web app framework that renders every widget on the page
 import pandas as pd                # dataframe engine used for all data manipulation
 import numpy as np                 # numeric helpers (currently only needed indirectly via pandas)
@@ -445,32 +443,19 @@ summary { font-weight: 600; color: var(--text) !important; }
 .explore-hero .eh-sub { color: var(--muted); font-size: .84rem; margin-top: 2px; }
 
 /* ── Column chip grid (Dataset Preview → Column Details) ── */
-/* auto-fill lets as many chips per row as fit at 170px each, so all
-   columns are visible with minimal scrolling instead of stacking 1-per-row. */
-.col-chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.col-chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .col-chip {
     background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 12px 14px; transition: border-color .15s;
-    /* Fixed, "normal" height for every card regardless of column-name length —
-       content is arranged with flexbox so the health bar always sits at the
-       bottom instead of the card stretching to fit long names or wrapped text. */
-    height: 108px; box-sizing: border-box;
-    display: flex; flex-direction: column; justify-content: space-between;
-    overflow: hidden;
+    padding: 14px 16px; transition: border-color .15s;
 }
 .col-chip:hover { border-color: var(--accent); }
-.col-chip .cc-name {
-    font-weight: 700; color: #fff; font-size: .82rem; line-height: 1.2;
-    /* Long column names get an ellipsis instead of wrapping and pushing the
-       card taller — a tooltip via `title` still shows the full name on hover. */
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.col-chip .cc-name { font-weight: 700; color: #fff; font-size: .86rem; margin-bottom: 8px; word-break: break-all; }
 .col-chip .cc-type {
-    display: inline-block; font-size: .64rem; font-weight: 700; padding: 2px 9px;
-    border-radius: 99px; letter-spacing: .03em; text-transform: uppercase; width: fit-content;
+    display: inline-block; font-size: .66rem; font-weight: 700; padding: 2px 9px;
+    border-radius: 99px; margin-bottom: 8px; letter-spacing: .03em; text-transform: uppercase;
 }
-.col-chip .cc-meta { color: var(--muted); font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.col-chip .cc-bar { background: rgba(255,255,255,.07); border-radius: 99px; height: 4px; overflow: hidden; }
+.col-chip .cc-meta { color: var(--muted); font-size: .76rem; margin-top: 4px; }
+.col-chip .cc-bar { background: rgba(255,255,255,.07); border-radius: 99px; height: 4px; overflow: hidden; margin-top: 8px; }
 .col-chip .cc-bar-fill { height: 100%; border-radius: 99px; }
 .type-num  { background: rgba(99,102,241,.16); color: #818cf8; }
 .type-obj  { background: rgba(34,211,165,.16); color: #22d3a5; }
@@ -655,7 +640,7 @@ with st.sidebar:
 
         # Wipes every piece of state tied to the current dataset so the app
         # behaves as if nothing was ever uploaded, then reruns to reflect it.
-        if st.button("🗑️ Clear dataset", key="clear_dataset", width='stretch'):
+        if st.button("🗑️ Clear dataset", key="clear_dataset", use_container_width=True):
             st.session_state.df = None
             st.session_state.original_df = None
             st.session_state.filename = None
@@ -834,12 +819,12 @@ elif page == "📂 Upload Dataset":
         # Two views into the data: a row preview, and a per-column dtype summary.
         prev_tab, types_tab = st.tabs(["👁️ Preview", "🧬 Column types"])
         with prev_tab:
-            st.dataframe(df.head(10), width='stretch')
+            st.dataframe(df.head(10), use_container_width=True)
         with types_tab:
             dtype_df = df.dtypes.rename("Type").astype(str).to_frame()
             dtype_df["Nulls"] = df.isna().sum()
             dtype_df["Unique values"] = df.nunique()
-            st.dataframe(dtype_df, width='stretch')
+            st.dataframe(dtype_df, use_container_width=True)
 
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         st.markdown("<div class='section-label'>NEXT UP</div>", unsafe_allow_html=True)
@@ -862,7 +847,7 @@ elif page == "📂 Upload Dataset":
                     <div class='n-desc'>{desc}</div>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button("Go →", key=f"go_{target}", width='stretch'):
+                if st.button("Go →", key=f"go_{target}", use_container_width=True):
                     st.session_state.redirect_to = target
                     st.rerun()
 
@@ -929,7 +914,7 @@ elif page == "🧹 Clean Data":
             data=csv_bytes,
             file_name=clean_filename,
             mime="text/csv",
-            width='stretch',
+            use_container_width=True,
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1082,7 +1067,7 @@ elif page == "🧹 Clean Data":
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         rc1, rc2 = st.columns(2)
         with rc1:
-            if st.button("↩️ Reset to original", key="reset_clean", width='stretch'):
+            if st.button("↩️ Reset to original", key="reset_clean", use_container_width=True):
                 st.session_state.df = st.session_state.original_df.copy()
                 st.session_state.clean_log = ["↩️ Reset to original dataset"]
                 st.rerun()
@@ -1093,14 +1078,14 @@ elif page == "🧹 Clean Data":
                 file_name=clean_filename,
                 mime="text/csv",
                 key="dl_csv_bottom",
-                width='stretch',
+                use_container_width=True,
             )
 
     with prev:
         # Right-hand column: always reflects the *current* `df`, so every
         # button click on the left is visible here immediately after the rerun.
         st.markdown("#### Live Preview")
-        st.dataframe(df.head(50), width='stretch', height=340)
+        st.dataframe(df.head(50), use_container_width=True, height=340)
 
         # Missing-value heatmap summary — a compact table of just the columns
         # that still have nulls, built as a small pandas method chain:
@@ -1112,7 +1097,7 @@ elif page == "🧹 Clean Data":
                       .to_frame()
                       .assign(Pct=lambda d: (d["Missing"]/len(df)*100).round(2))
                       .query("Missing > 0"))
-            st.dataframe(miss, width='stretch')
+            st.dataframe(miss, use_container_width=True)
 
         # Clean log — running audit trail of every action applied this
         # session, newest first, so the user can see exactly what happened.
@@ -1135,90 +1120,165 @@ else:
         st.stop()
 
     # ── Dataset Preview ──────────────────────────────────────────────────────
-    # Read-only exploration of the raw table: a searchable data grid, plus a
-    # per-column "profile card" view (type, uniqueness, missingness).
-    if page == "🔍 Dataset Preview":
-        st.markdown(f"""
-        <div class='explore-hero'>
-            <div class='eh-icon'>🔍</div>
-            <div>
-                <div class='eh-title'>Dataset Preview</div>
-                <div class='eh-sub'>{st.session_state.filename} · {df.shape[0]:,} rows · {df.shape[1]} columns</div>
+if page == "🔍 Dataset Preview":
+
+    st.markdown(f"""
+    <div class='explore-hero'>
+        <div class='eh-icon'>🔍</div>
+        <div>
+            <div class='eh-title'>Dataset Preview</div>
+            <div class='eh-sub'>
+                {st.session_state.filename} ·
+                {df.shape[0]:,} rows ·
+                {df.shape[1]} columns
             </div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Rows",          f"{df.shape[0]:,}")
-        c2.metric("Columns",       df.shape[1])
-        c3.metric("Missing cells", int(df.isna().sum().sum()))
-        c4.metric("Duplicates",    int(df.duplicated().sum()))
+    c1, c2, c3, c4 = st.columns(4)
 
-        st.markdown("<div class='div'></div>", unsafe_allow_html=True)
+    c1.metric("Rows", f"{df.shape[0]:,}")
+    c2.metric("Columns", df.shape[1])
+    c3.metric("Missing Cells", int(df.isna().sum().sum()))
+    c4.metric("Duplicate Rows", int(df.duplicated().sum()))
 
-        tab_table, tab_cols = st.tabs(["📋 Data Table", "🧬 Column Details"])
+    st.markdown("<hr>", unsafe_allow_html=True)
 
-        with tab_table:
-            # Simple case-insensitive substring filter on column *names* (not
-            # cell values) — lets the user narrow a wide table down quickly.
-            search = st.text_input("🔎 Search columns", placeholder="Type a column name to filter the view…")
-            shown_df = df
-            if search.strip():
-                matches = [c for c in df.columns if search.lower() in c.lower()]
-                if matches:
-                    shown_df = df[matches]
-                else:
-                    st.warning(f"No columns match '{search}'.")
-            st.dataframe(shown_df, width='stretch', height=460)
+    tab_table, tab_cols = st.tabs(
+        ["📋 Data Table", "🧬 Column Details"]
+    )
 
-        with tab_cols:
-            # Build one "chip" card per column summarizing its dtype, unique
-            # count, and missing-value rate. Card HTML is accumulated into a
-            # list and joined once at the end (one st.markdown call) rather
-            # than calling st.markdown per column, which is both faster and
-            # lets the CSS grid lay all cards out together.
-            type_map = {"num": ("Numeric", "type-num"), "obj": ("Text", "type-obj"),
-                        "date": ("Date", "type-date"), "bool": ("Boolean", "type-bool")}
-            chips = []
-            for col in df.columns:
-                s = df[col]
-                # Order matters: bool must be checked before numeric, since
-                # pandas boolean columns also satisfy is_numeric_dtype.
-                if pd.api.types.is_bool_dtype(s):
-                    tkey = "bool"
-                elif pd.api.types.is_datetime64_any_dtype(s):
-                    tkey = "date"
-                elif pd.api.types.is_numeric_dtype(s):
-                    tkey = "num"
-                else:
-                    tkey = "obj"
-                label, css_class = type_map[tkey]
-                nulls = int(s.isna().sum())
-                pct_missing = round(nulls / len(df) * 100, 1) if len(df) else 0
-                uniq = int(s.nunique())
-                # Traffic-light bar color based on how much of the column is missing.
-                bar_color = "#f87171" if pct_missing > 20 else ("#fbbf24" if pct_missing > 0 else "#22d3a5")
-                # Bar WIDTH represents completeness (100% - missing%), not missing%
-                # directly — a fully clean column should fill the whole bar green;
-                # a column that's mostly missing should show a short, red bar.
-                # Clamped to [2, 100] so a completely empty column still renders a
-                # visible sliver instead of vanishing entirely.
-                completeness = max(0.0, min(100.0, 100 - pct_missing))
-                bar_width = max(completeness, 2)
-                # Escaping the column name protects against any quote/angle-bracket
-                # character in a real-world CSV header breaking out of the HTML
-                # attribute it sits in — which is exactly what causes a card's
-                # raw markup to spill out as visible text instead of rendering.
-                safe_col = html.escape(str(col))
-                chips.append(f"""
-                <div class='col-chip'>
-                    <div class='cc-name' title='{safe_col}'>{safe_col}</div>
-                    <span class='cc-type {css_class}'>{label}</span>
-                    <div class='cc-meta'>{uniq:,} unique · {nulls:,} missing ({pct_missing}%)</div>
-                    <div class='cc-bar'><div class='cc-bar-fill' style='width:{bar_width}%;background:{bar_color}'></div></div>
+    # ==========================================================
+    # DATA TABLE
+    # ==========================================================
+
+    with tab_table:
+
+        search = st.text_input(
+            "🔎 Search Columns",
+            placeholder="Type a column name..."
+        )
+
+        shown_df = df
+
+        if search.strip():
+
+            matches = [
+                c for c in df.columns
+                if search.lower() in c.lower()
+            ]
+
+            if matches:
+                shown_df = df[matches]
+            else:
+                st.warning(f"No columns match '{search}'.")
+
+        st.dataframe(
+            shown_df,
+            width="stretch",
+            height=460
+        )
+
+    # ==========================================================
+    # COLUMN DETAILS
+    # ==========================================================
+
+    with tab_cols:
+
+        type_map = {
+            "num": ("Numeric", "type-num"),
+            "obj": ("Text", "type-obj"),
+            "date": ("Date", "type-date"),
+            "bool": ("Boolean", "type-bool"),
+        }
+
+        chips = []
+
+        total_rows = len(df)
+
+        for col in df.columns:
+
+            s = df[col]
+
+            if pd.api.types.is_bool_dtype(s):
+                key = "bool"
+
+            elif pd.api.types.is_datetime64_any_dtype(s):
+                key = "date"
+
+            elif pd.api.types.is_numeric_dtype(s):
+                key = "num"
+
+            else:
+                key = "obj"
+
+            label, css = type_map[key]
+
+            unique = int(s.nunique(dropna=True))
+            missing = int(s.isna().sum())
+
+            if total_rows > 0:
+                pct_missing = round(
+                    (missing / total_rows) * 100,
+                    1
+                )
+            else:
+                pct_missing = 0
+
+            completeness = round(100 - pct_missing, 1)
+
+            if pct_missing == 0:
+                color = "#22d3a5"
+
+            elif pct_missing <= 20:
+                color = "#fbbf24"
+
+            else:
+                color = "#f87171"
+
+            safe_col = html.escape(str(col))
+
+            chips.append(f"""
+            <div class="col-chip">
+
+                <div class="cc-name" title="{safe_col}">
+                    {safe_col}
                 </div>
-                """)
-            st.markdown(f"<div class='col-chip-grid'>{''.join(chips)}</div>", unsafe_allow_html=True)
+
+                <span class="cc-type {css}">
+                    {label}
+                </span>
+
+                <div class="cc-meta">
+                    {unique:,} unique •
+                    {missing:,} missing
+                    ({pct_missing}%)
+                </div>
+
+                <div class="cc-bar">
+
+                    <div
+                        class="cc-bar-fill"
+                        style="
+                            width:{completeness}%;
+                            background:{color};
+                        ">
+                    </div>
+
+                </div>
+
+            </div>
+            """)
+
+        st.markdown(
+            f"""
+            <div class="col-chip-grid">
+                {''.join(chips)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # ── Statistics ───────────────────────────────────────────────────────────
     elif page == "📊 Statistics":
@@ -1250,7 +1310,7 @@ else:
             stats = get_numeric_stats(analysis_df)
             if stats is not None and not stats.empty:
                 st.markdown("<div class='stat-panel'><h4>📐 Summary statistics</h4>", unsafe_allow_html=True)
-                st.dataframe(stats, width='stretch')
+                st.dataframe(stats, use_container_width=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
                 st.markdown("<div class='stat-panel'><h4>📈 Visualize a column</h4>", unsafe_allow_html=True)
@@ -1295,7 +1355,7 @@ else:
                     """
                 st.markdown(rows_html, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
-            st.dataframe(miss, width='stretch')
+            st.dataframe(miss, use_container_width=True)
 
         with tabs[2]:
             cat_cols = df.select_dtypes(exclude="number").columns.tolist()
@@ -1320,7 +1380,7 @@ else:
                 st.markdown(rows_html, unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                st.dataframe(vc, width='stretch')
+                st.dataframe(vc, use_container_width=True)
             else:
                 st.info("No categorical columns found.")
 
@@ -1399,13 +1459,13 @@ else:
             """, unsafe_allow_html=True)
 
             if "Bar" in chart and cats and selected_col:
-                st.plotly_chart(plot_bar(df, selected_col), width='stretch')
+                st.plotly_chart(plot_bar(df, selected_col), use_container_width=True)
             elif "Histogram" in chart and nums and selected_col:
-                st.plotly_chart(plot_histogram(df, selected_col), width='stretch')
+                st.plotly_chart(plot_histogram(df, selected_col), use_container_width=True)
             elif "Pie" in chart and cats and selected_col:
-                st.plotly_chart(plot_pie(df, selected_col), width='stretch')
+                st.plotly_chart(plot_pie(df, selected_col), use_container_width=True)
             elif "Scatter" in chart and x_col and y_col:
-                st.plotly_chart(plot_scatter(df, x_col, y_col), width='stretch')
+                st.plotly_chart(plot_scatter(df, x_col, y_col), use_container_width=True)
             else:
                 st.info("Not enough columns of the required type for this chart.")
 
@@ -1458,7 +1518,7 @@ else:
         chip_cols = st.columns(len(suggestions))
         for col, sug in zip(chip_cols, suggestions):
             with col:
-                if st.button(sug, key=f"chip_{sug}", width='stretch'):
+                if st.button(sug, key=f"chip_{sug}", use_container_width=True):
                     st.session_state.ai_prefill = sug.split(" ", 1)[1]
 
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
@@ -1515,7 +1575,7 @@ else:
             )
             c1, c2 = st.columns([5, 1])
             with c2:
-                submitted = st.form_submit_button("Ask AI →", width='stretch')
+                submitted = st.form_submit_button("Ask AI →", use_container_width=True)
 
         if submitted:
             st.session_state.ai_prefill = ""
