@@ -1115,35 +1115,39 @@ elif page == "🧹 Clean Data":
 # ══════════════════════════════════════════════════════════════════════════════
 else:
     df = st.session_state.df
+
     if df is None:
         st.warning("Upload a dataset first.")
         st.stop()
 
     # ── Dataset Preview ──────────────────────────────────────────────────────
-if page == "🔍 Dataset Preview":
+    if page == "🔍 Dataset Preview":
 
-        st.markdown(f"""
-    <div class='explore-hero'>
-        <div class='eh-icon'>🔍</div>
-        <div>
-            <div class='eh-title'>Dataset Preview</div>
-            <div class='eh-sub'>
-                {st.session_state.filename} ·
-                {df.shape[0]:,} rows ·
-                {df.shape[1]} columns
+        st.markdown(
+            f"""
+            <div class='explore-hero'>
+                <div class='eh-icon'>🔍</div>
+                <div>
+                    <div class='eh-title'>Dataset Preview</div>
+                    <div class='eh-sub'>
+                        {st.session_state.filename} ·
+                        {df.shape[0]:,} rows ·
+                        {df.shape[1]} columns
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
 
-    c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric("Rows", f"{df.shape[0]:,}")
-    c2.metric("Columns", df.shape[1])
-    c3.metric("Missing Cells", int(df.isna().sum().sum()))
-    c4.metric("Duplicate Rows", int(df.duplicated().sum()))
+        c1.metric("Rows", f"{df.shape[0]:,}")
+        c2.metric("Columns", df.shape[1])
+        c3.metric("Missing Cells", int(df.isna().sum().sum()))
+        c4.metric("Duplicate Rows", int(df.duplicated().sum()))
 
-    st.markdown("<div class='div'></div>", unsafe_allow_html=True)
+        st.markdown("<div class='div'></div>", unsafe_allow_html=True)
 
     tab_table, tab_cols = st.tabs(
         ["📋 Data Table", "🧬 Column Details"]
