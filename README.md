@@ -14,6 +14,8 @@
 [![Plotly](https://img.shields.io/badge/Plotly-Interactive-3F4F75?style=flat-square&logo=plotly&logoColor=white)](#)
 [![OpenRouter](https://img.shields.io/badge/AI-OpenRouter-7C5CFC?style=flat-square)](#)
 
+**🌐 Live App:** [https://aianylistassistand-e4ufhunamkwkljyylj6col.streamlit.app/](https://aianylistassistand-e4ufhunamkwkljyylj6col.streamlit.app/)
+
 </div>
 
 ---
@@ -46,9 +48,17 @@ It combines automated cleaning, Plotly visualizations, descriptive statistics, a
 ```text
 Hackathon/
 ├── main.py              # App entrypoint — routing, UI, session state
-├── analysis.py          # Data loading, cleaning, statistics, PDF export
-├── visualization.py     # Plotly chart generators
-├── ai_helper.py         # OpenRouter AI client and question handler
+├── modules/             # Helper modules package
+│   ├── __init__.py      # Package marker
+│   ├── analysis.py      # Data loading, cleaning, statistics, PDF export
+│   ├── visualization.py # Plotly chart generators
+│   ├── ai_helper.py     # OpenRouter AI client and question handler
+│   ├── config.py        # Configuration constants
+│   ├── styles.py        # CSS styling
+│   ├── session.py       # Session state management
+│   ├── sidebar.py       # Sidebar rendering
+│   ├── utils.py         # Helper functions
+│   └── pages.py         # Page rendering functions
 ├── requirements.txt     # Python dependencies
 ├── .env                 # API key (not committed)
 ├── .gitignore
