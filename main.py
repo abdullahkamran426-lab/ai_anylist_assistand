@@ -1,5 +1,5 @@
 ﻿"""
-DataLens â€” AI Data Analysis Assistant
+DataLens — AI Data Analysis Assistant
 ======================================
 A Streamlit app that lets a user upload a CSV, clean it interactively,
 explore it with stats/charts, and ask an AI questions about it.
@@ -34,8 +34,8 @@ from modules.pages import (
 # Must be the first Streamlit call. Sets browser tab title/icon and layout.
 # ============================================================================
 st.set_page_config(
-    page_title="DataLens â€” AI Analysis",
-    page_icon="ðŸ”¬",
+    page_title="DataLens — AI Analysis",
+    page_icon="🔬",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -69,21 +69,21 @@ page = render_sidebar()
 # HOME PAGE
 # Landing page - no data required
 # ------------------------------------------------------------------------
-if page == "ðŸ  Home":
+if page == "🏠 Home":
     render_home_page()
 
 # ------------------------------------------------------------------------
 # UPLOAD PAGE
 # Entry point for uploading data - no data required
 # ------------------------------------------------------------------------
-elif page == "ðŸ“‚ Upload Dataset":
+elif page == "📂 Upload Dataset":
     render_upload_page()
 
 # ------------------------------------------------------------------------
 # CLEAN DATA PAGE
 # Interactive data cleaning - requires data
 # ------------------------------------------------------------------------
-elif page == "ðŸ§¹ Clean Data":
+elif page == "🧹 Clean Data":
     df = st.session_state.df
     if df is None:
         st.warning("Upload a dataset first.")
@@ -105,40 +105,40 @@ else:
     # DATASET PREVIEW PAGE
     # View the loaded dataset with column details
     # --------------------------------------------------------------------
-    if page == "ðŸ” Dataset Preview":
+    if page == "🔍 Dataset Preview":
         render_dataset_preview_page()
 
     # --------------------------------------------------------------------
     # STATISTICS PAGE
     # Statistical summaries and analysis
     # --------------------------------------------------------------------
-    elif page == "ðŸ“Š Statistics":
+    elif page == "📊 Statistics":
         render_statistics_page()
 
     # --------------------------------------------------------------------
     # VISUALIZATIONS PAGE
     # Plotly charts (bar, histogram, pie, scatter)
     # --------------------------------------------------------------------
-    elif page == "ðŸ“ˆ Visualizations":
+    elif page == "📈 Visualizations":
         render_visualizations_page()
 
     # --------------------------------------------------------------------
     # AI ASSISTANT PAGE
     # Natural-language Q&A with AI
     # --------------------------------------------------------------------
-    elif page == "ðŸ¤– AI Assistant":
+    elif page == "🤖 AI Assistant":
         render_ai_assistant_page()
 
     # --------------------------------------------------------------------
     # EXPORT PAGE
     # Download AI-generated PDF report
     # --------------------------------------------------------------------
-    elif page == "ðŸ“„ Export Report":
+    elif page == "📄 Export Report":
         render_export_page()
 
     # --------------------------------------------------------------------
     # ABOUT PAGE
     # App information and technology stack
     # --------------------------------------------------------------------
-    elif page == "â„¹ï¸ About":
+    elif page == "ℹ️ About":
         render_about_page()
