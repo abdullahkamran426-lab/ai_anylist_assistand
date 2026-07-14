@@ -1265,7 +1265,7 @@ else:
         )
 
     # ── Statistics ───────────────────────────────────────────────────────────
-    elif page == "📊 Statistics":
+    if page == "📊 Statistics":
         st.markdown(f"""
         <div class='explore-hero'>
             <div class='eh-icon'>📊</div>
