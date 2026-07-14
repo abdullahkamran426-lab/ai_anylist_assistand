@@ -156,26 +156,112 @@ flowchart TD
 ## 🧩 Module Reference
 
 <details>
-<summary><strong>📄 main.py — Application Controller</strong></summary>
+<summary><strong>📄 main.py — Application Orchestrator</strong></summary>
 <br/>
 
-Handles all page routing, session-state initialization, and UI rendering. Integrates with all helper modules.
+Clean entry point that delegates all functionality to modules. Handles page routing, session state initialization, CSS injection, and sidebar rendering.
 
-| Page | Purpose |
+| Section | Purpose |
 |:---|:---|
-| Home | App introduction and feature overview |
-| Upload Dataset | CSV upload, encoding handling, cleaning, session storage |
-| Dataset Preview | Full table view, column types, missing value counts |
-| Statistics | Numeric stats, missing analysis, categorical counts |
-| Visualizations | Interactive Plotly chart builder |
-| AI Assistant | Natural-language question answering |
-| Export Report | AI-response PDF generation and download |
-| About | App description and technology stack |
+| Imports | Imports from modules package |
+| Page Config | Sets Streamlit page title, icon, and layout |
+| CSS Injection | Calls `inject_css()` from styles module |
+| Session Init | Calls `initialize_session_state()` from session module |
+| Sidebar | Calls `render_sidebar()` to get selected page |
+| Page Routing | Routes to appropriate page function from pages module |
 
 </details>
 
 <details>
-<summary><strong>🔧 analysis.py — Data & Export Utilities</strong></summary>
+<summary><strong>📦 modules/config.py — Configuration Constants</strong></summary>
+<br/>
+
+Centralized application configuration.
+
+| Constant | Description |
+|:---|:---|
+| `LARGE_DF_THRESHOLD` | Row count threshold for sampling (default: 50,000) |
+| `NAV_OPTIONS` | List of page names for sidebar navigation |
+| `SESSION_STATE_DEFAULTS` | Dictionary of default session state values |
+
+</details>
+
+<details>
+<summary><strong>🎨 modules/styles.py — CSS Styling</strong></summary>
+<br/>
+
+Contains all custom CSS for the application.
+
+| Function | Description |
+|:---|:---|
+| `inject_css()` | Injects all CSS styles into Streamlit via st.markdown |
+
+CSS sections include: fonts, color palette, sidebar styling, buttons, dataframes, input fields, hero banners, feature cards, pills, panels, charts, and more.
+
+</details>
+
+<details>
+<summary><strong>💾 modules/session.py — Session State Management</strong></summary>
+<br/>
+
+Manages Streamlit session state initialization and cleanup.
+
+| Function | Description |
+|:---|:---|
+| `initialize_session_state()` | Initializes all session state variables with defaults |
+| `clear_dataset_state()` | Clears dataset-related session state (df, filename, logs, etc.) |
+
+</details>
+
+<details>
+<summary><strong>📋 modules/sidebar.py — Sidebar Rendering</strong></summary>
+<br/>
+
+Renders the application sidebar with navigation, dataset status, and branding.
+
+| Function | Description |
+|:---|:---|
+| `render_sidebar()` | Renders complete sidebar and returns selected page name |
+
+Includes: logo with pulsing AI status, navigation radio, dataset status badge (with health percentage), clear dataset button, and footer.
+
+</details>
+
+<details>
+<summary><strong>🛠️ modules/utils.py — Helper Functions</strong></summary>
+<br/>
+
+Utility functions used throughout the application.
+
+| Function | Description |
+|:---|:---|
+| `section(label, title)` | Renders consistent section header pattern |
+| `sample_df_for_speed(frame, enabled, n)` | Returns sampled dataframe for large datasets |
+
+</details>
+
+<details>
+<summary><strong>📄 modules/pages.py — Page Rendering Functions</strong></summary>
+<br/>
+
+All page rendering functions for the application.
+
+| Function | Description |
+|:---|:---|
+| `render_home_page()` | Landing page with app overview and feature cards |
+| `render_upload_page()` | CSV upload with auto-clean and success banner |
+| `render_clean_data_page()` | Interactive data cleaning with live preview |
+| `render_dataset_preview_page()` | Full table view with column details |
+| `render_statistics_page()` | Numeric stats, missing values, value counts |
+| `render_visualizations_page()` | Plotly chart builder (bar, histogram, pie, scatter) |
+| `render_ai_assistant_page()` | Natural-language Q&A with conversation history |
+| `render_export_page()` | PDF report generation and download |
+| `render_about_page()` | App information and technology stack |
+
+</details>
+
+<details>
+<summary><strong>🔧 modules/analysis.py — Data & Export Utilities</strong></summary>
 <br/>
 
 | Function | Signature | Description |
@@ -190,7 +276,7 @@ Handles all page routing, session-state initialization, and UI rendering. Integr
 </details>
 
 <details>
-<summary><strong>📈 visualization.py — Chart Generators</strong></summary>
+<summary><strong>📈 modules/visualization.py — Chart Generators</strong></summary>
 <br/>
 
 All functions return a **Plotly figure object** ready for `st.plotly_chart()`.
@@ -205,7 +291,7 @@ All functions return a **Plotly figure object** ready for `st.plotly_chart()`.
 </details>
 
 <details>
-<summary><strong>🤖 ai_helper.py — AI Integration</strong></summary>
+<summary><strong>🤖 modules/ai_helper.py — AI Integration</strong></summary>
 <br/>
 
 | Setting | Value |
@@ -234,8 +320,6 @@ Sends a combined prompt — dataset context and user question — to the model a
 | `openai` | OpenRouter-compatible AI client | ✅ |
 | `python-dotenv` | `.env` variable loading | ✅ |
 | `numpy` | Numeric utilities | ✅ |
-| `matplotlib` | Installed — not yet wired | ⬜ |
-| `seaborn` | Installed — not yet wired | ⬜ |
 
 ---
 
