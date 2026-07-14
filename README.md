@@ -44,7 +44,7 @@ It combines automated cleaning, Plotly visualizations, descriptive statistics, a
 ## 🗂 Repository Structure
 
 ```text
-ali/
+Hackathon/
 ├── main.py              # App entrypoint — routing, UI, session state
 ├── analysis.py          # Data loading, cleaning, statistics, PDF export
 ├── visualization.py     # Plotly chart generators
