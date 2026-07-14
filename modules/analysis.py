@@ -74,8 +74,10 @@ def export_to_pdf(text_content, filename="AI_Analysis_Report.pdf"):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
+    # pyrefly: ignore [unexpected-keyword]
     pdf.cell(200, 10, txt="AI Data Analysis Report", ln=True, align='C')
     pdf.ln(10)
+    # pyrefly: ignore [unexpected-keyword]
     pdf.multi_cell(0, 10, txt=clean_text)
     pdf.output(tmp_filename)
     return tmp_filename
