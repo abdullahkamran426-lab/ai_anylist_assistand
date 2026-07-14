@@ -1122,7 +1122,7 @@ else:
     # ── Dataset Preview ──────────────────────────────────────────────────────
 if page == "🔍 Dataset Preview":
 
-    st.markdown(f"""
+        st.markdown(f"""
     <div class='explore-hero'>
         <div class='eh-icon'>🔍</div>
         <div>
@@ -1143,16 +1143,15 @@ if page == "🔍 Dataset Preview":
     c3.metric("Missing Cells", int(df.isna().sum().sum()))
     c4.metric("Duplicate Rows", int(df.duplicated().sum()))
 
-    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<div class='div'></div>", unsafe_allow_html=True)
 
     tab_table, tab_cols = st.tabs(
         ["📋 Data Table", "🧬 Column Details"]
     )
 
-    # ==========================================================
+    # ==========================
     # DATA TABLE
-    # ==========================================================
-
+    # ==========================
     with tab_table:
 
         search = st.text_input(
@@ -1180,10 +1179,9 @@ if page == "🔍 Dataset Preview":
             height=460
         )
 
-    # ==========================================================
+    # ==========================
     # COLUMN DETAILS
-    # ==========================================================
-
+    # ==========================
     with tab_cols:
 
         type_map = {
@@ -1193,7 +1191,7 @@ if page == "🔍 Dataset Preview":
             "bool": ("Boolean", "type-bool"),
         }
 
-        chips = []
+        cards = []
 
         total_rows = len(df)
 
@@ -1202,81 +1200,63 @@ if page == "🔍 Dataset Preview":
             s = df[col]
 
             if pd.api.types.is_bool_dtype(s):
-                key = "bool"
+                label, css = type_map["bool"]
 
             elif pd.api.types.is_datetime64_any_dtype(s):
-                key = "date"
+                label, css = type_map["date"]
 
             elif pd.api.types.is_numeric_dtype(s):
-                key = "num"
+                label, css = type_map["num"]
 
             else:
-                key = "obj"
-
-            label, css = type_map[key]
+                label, css = type_map["obj"]
 
             unique = int(s.nunique(dropna=True))
             missing = int(s.isna().sum())
 
-            if total_rows > 0:
-                pct_missing = round(
-                    (missing / total_rows) * 100,
-                    1
-                )
-            else:
-                pct_missing = 0
+            pct_missing = (
+                round((missing / total_rows) * 100, 1)
+                if total_rows
+                else 0
+            )
 
-            completeness = round(100 - pct_missing, 1)
+            completeness = 100 - pct_missing
 
             if pct_missing == 0:
                 color = "#22d3a5"
-
             elif pct_missing <= 20:
                 color = "#fbbf24"
-
             else:
                 color = "#f87171"
 
-            safe_col = html.escape(str(col))
+            cards.append(f"""
+            <div class='col-chip'>
+                <div class='cc-name' title='{col}'>{col}</div>
 
-            chips.append(f"""
-            <div class="col-chip">
-
-                <div class="cc-name" title="{safe_col}">
-                    {safe_col}
-                </div>
-
-                <span class="cc-type {css}">
+                <span class='cc-type {css}'>
                     {label}
                 </span>
 
-                <div class="cc-meta">
-                    {unique:,} unique •
+                <div class='cc-meta'>
+                    {unique:,} unique ·
                     {missing:,} missing
                     ({pct_missing}%)
                 </div>
 
-                <div class="cc-bar">
-
+                <div class='cc-bar'>
                     <div
-                        class="cc-bar-fill"
-                        style="
-                            width:{completeness}%;
-                            background:{color};
-                        ">
+                        class='cc-bar-fill'
+                        style='width:{completeness}%;background:{color};'>
                     </div>
-
                 </div>
 
             </div>
             """)
 
         st.markdown(
-            f"""
-            <div class="col-chip-grid">
-                {''.join(chips)}
-            </div>
-            """,
+            "<div class='col-chip-grid'>"
+            + "".join(cards)
+            + "</div>",
             unsafe_allow_html=True,
         )
 
