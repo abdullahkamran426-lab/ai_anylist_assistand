@@ -138,36 +138,36 @@ The app will open at `http://localhost:8501`.
 ```mermaid
 flowchart TD
     A([👤 User]) --> B[Launch Streamlit App]
-    B --> C["main.py → initialize_session_state()"]
-    C --> D["main.py → inject_css()"]
-    D --> E["main.py → render_sidebar()"]
+    B --> C["main.py<br/>↓<br/>initialize_session_state()"]
+    C --> D["style/__init__.py<br/>↓<br/>inject_css()"]
+    D --> E["sidebar.py<br/>↓<br/>render_sidebar()"]
     E --> F{Sidebar Navigation}
 
     F --> G[📤 Upload CSV]
-    G --> H["pages.render_upload_page()"]
-    H --> I["analysis.load_data() — encoding fallback"]
-    I --> J["analysis.clean_data() — normalize types"]
-    J --> K[(📦 Session State — DataFrame)]
+    G --> H["pages/upload.py<br/>render_upload_page()"]
+    H --> I["analysis.load_data()<br/>encoding fallback"]
+    I --> J["analysis.clean_data()<br/>normalize types"]
+    J --> K[(📦 Session State<br/>DataFrame)]
 
     K --> L[👁 Dataset Preview]
     K --> M[📊 Statistics]
     K --> N[📈 Visualizations]
     K --> O[🤖 AI Assistant]
 
-    L  --> L1["pages.render_dataset_preview_page()"]
-    M  --> M1["pages.render_statistics_page()"]
+    L  --> L1["pages/dataset_preview.py<br/>render_dataset_preview_page()"]
+    M  --> M1["pages/statistics.py<br/>render_statistics_page()"]
     M1 --> M2["analysis.get_numeric_stats()"]
-    N  --> N1["pages.render_visualizations_page()"]
-    N1 --> N2["visualization.plot_bar / plot_histogram / plot_pie / plot_scatter"]
+    N  --> N1["pages/visualizations.py<br/>render_visualizations_page()"]
+    N1 --> N2["visualization.plot_*()<br/>bar / histogram / pie / scatter"]
 
-    O  --> O1["pages.render_ai_assistant_page()"]
+    O  --> O1["pages/ai_assistant.py<br/>render_ai_assistant_page()"]
     O1 --> O2["analysis.get_summary()"]
-    O2 --> O3["ai_helper.ask_ai() → OpenRouter API"]
-    O3 --> O4["Llama 3.1 8B — Response"]
-    O4 --> O5[(💾 session_state.answer)]
+    O2 --> O3["ai_helper.ask_ai()<br/>↓<br/>OpenRouter API"]
+    O3 --> O4["Llama 3.1 8B<br/>Response"]
+    O4 --> O5[(💾 session_state<br/>answer)]
 
     O5  --> P[📄 Export Report]
-    P  --> P1["pages.render_export_page()"]
+    P  --> P1["pages/export_report.py<br/>render_export_page()"]
     P1 --> P2["analysis.export_to_pdf()"]
     P2 --> Q([⬇ Download PDF])
 
@@ -189,12 +189,12 @@ Clean entry point that delegates all functionality to modules. Handles page rout
 
 | Section | Purpose |
 |:---|:---|
-| Imports | Imports from modules package |
+| Imports | Imports from modules package (style, session, sidebar, pages) |
 | Page Config | Sets Streamlit page title, icon, and layout |
-| CSS Injection | Calls `inject_css()` from styles module |
-| Session Init | Calls `initialize_session_state()` from session module |
+| CSS Injection | Calls `inject_css()` from `style` package |
+| Session Init | Calls `initialize_session_state()` from `session` module |
 | Sidebar | Calls `render_sidebar()` to get selected page |
-| Page Routing | Routes to appropriate page function from pages module |
+| Page Routing | Routes to appropriate `render_*()` function from `pages` package |
 
 </details>
 
