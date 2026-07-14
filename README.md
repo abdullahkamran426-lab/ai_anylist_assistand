@@ -54,11 +54,28 @@ Hackathon/
 │   ├── visualization.py # Plotly chart generators
 │   ├── ai_helper.py     # OpenRouter AI client and question handler
 │   ├── config.py        # Configuration constants
-│   ├── styles.py        # CSS styling
 │   ├── session.py       # Session state management
 │   ├── sidebar.py       # Sidebar rendering
 │   ├── utils.py         # Helper functions
-│   └── pages.py         # Page rendering functions
+│   ├── pages/           # Page rendering functions (package)
+│   │   ├── __init__.py  # Re-exports all render_* functions
+│   │   ├── home.py      # Landing page
+│   │   ├── upload.py    # CSV upload & auto-clean
+│   │   ├── clean_data.py # Interactive data cleaning
+│   │   ├── dataset_preview.py # Table view
+│   │   ├── statistics.py # Numeric stats & categories
+│   │   ├── visualizations.py # Plotly charts
+│   │   ├── ai_assistant.py # AI Q&A interface
+│   │   ├── export_report.py # PDF report generation
+│   │   └── about.py     # App information
+│   └── style/           # CSS styling (package)
+│       ├── __init__.py  # Aggregates all CSS modules
+│       ├── base.py      # Font imports & color palette
+│       ├── sidebar.py   # Sidebar styling
+│       ├── widgets.py   # Generic widget styling
+│       ├── layout.py    # Layout components
+│       ├── upload.py    # Upload page styling
+│       └── explore.py   # Stats/Visualizations styling
 ├── requirements.txt     # Python dependencies
 ├── .env                 # API key (not committed)
 ├── .gitignore
@@ -196,16 +213,22 @@ Centralized application configuration.
 </details>
 
 <details>
-<summary><strong>🎨 modules/styles.py — CSS Styling</strong></summary>
+<summary><strong>🎨 modules/style/ — CSS Styling Package</strong></summary>
 <br/>
 
-Contains all custom CSS for the application.
+Contains all custom CSS for the application, split across focused modules for maintainability.
 
-| Function | Description |
+| Module | Description |
 |:---|:---|
-| `inject_css()` | Injects all CSS styles into Streamlit via st.markdown |
+| `base.py` | Google Font imports, CSS custom property palette (--accent, --card, --border, etc.), base html/body rules |
+| `sidebar.py` | Sidebar navigation re-skin |
+| `widgets.py` | Generic Streamlit widget skins (buttons, dataframe, input fields, etc.) |
+| `layout.py` | Custom layout primitives shared across pages (.hero, .pill, .section-label, .panel, etc.) |
+| `upload.py` | Upload Dataset page-specific styling |
+| `explore.py` | Dataset Preview / Statistics / Visualizations page styling |
+| `__init__.py` | Aggregates all CSS modules and exports `inject_css()` and `get_css()` |
 
-CSS sections include: fonts, color palette, sidebar styling, buttons, dataframes, input fields, hero banners, feature cards, pills, panels, charts, and more.
+**Public API:** `inject_css()` — called once at the start of main.py to inject the complete compiled stylesheet.
 
 </details>
 
@@ -250,22 +273,24 @@ Utility functions used throughout the application.
 </details>
 
 <details>
-<summary><strong>📄 modules/pages.py — Page Rendering Functions</strong></summary>
+<summary><strong>📄 modules/pages/ — Page Rendering Functions Package</strong></summary>
 <br/>
 
-All page rendering functions for the application.
+All page rendering functions for the application, split into one module per page for scalability and maintainability.
 
-| Function | Description |
-|:---|:---|
-| `render_home_page()` | Landing page with app overview and feature cards |
-| `render_upload_page()` | CSV upload with auto-clean and success banner |
-| `render_clean_data_page()` | Interactive data cleaning with live preview |
-| `render_dataset_preview_page()` | Full table view with column details |
-| `render_statistics_page()` | Numeric stats, missing values, value counts |
-| `render_visualizations_page()` | Plotly chart builder (bar, histogram, pie, scatter) |
-| `render_ai_assistant_page()` | Natural-language Q&A with conversation history |
-| `render_export_page()` | PDF report generation and download |
-| `render_about_page()` | App information and technology stack |
+| Module | Function | Description |
+|:---|:---|:---|
+| `home.py` | `render_home_page()` | Landing page with app overview and feature cards |
+| `upload.py` | `render_upload_page()` | CSV upload with auto-clean and success banner |
+| `clean_data.py` | `render_clean_data_page()` | Interactive data cleaning with live preview |
+| `dataset_preview.py` | `render_dataset_preview_page()` | Full table view with column details |
+| `statistics.py` | `render_statistics_page()` | Numeric stats, missing values, value counts |
+| `visualizations.py` | `render_visualizations_page()` | Plotly chart builder (bar, histogram, pie, scatter) |
+| `ai_assistant.py` | `render_ai_assistant_page()` | Natural-language Q&A with conversation history |
+| `export_report.py` | `render_export_page()` | PDF report generation and download |
+| `about.py` | `render_about_page()` | App information and technology stack |
+
+**Public API:** `__init__.py` re-exports all `render_*` functions, so imports in main.py remain unchanged: `from modules.pages import render_home_page, render_upload_page, ...`
 
 </details>
 
