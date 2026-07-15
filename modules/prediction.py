@@ -75,7 +75,9 @@ Integration:
 def detect_problem_type(df: pd.DataFrame, target: str) -> str:
     """Infer whether the target should be treated as regression or classification."""
     series = df[target]
-    if pd.api.types.is_numeric_dtype(series):
+    # Use numpy dtype checking for better compatibility across pandas versions
+    import numpy as np
+    if np.issubdtype(series.dtype, np.number):
         if series.nunique() <= 20:
             return "classification"
         return "regression"
