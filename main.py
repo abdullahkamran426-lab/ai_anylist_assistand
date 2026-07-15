@@ -25,10 +25,10 @@ from modules.pages import (
     render_statistics_page,
     render_visualizations_page,
     render_ai_assistant_page,
+    render_prediction_page,
     render_export_page,
     render_about_page,
 )
-
 # ============================================================================
 # PAGE CONFIGURATION
 # Must be the first Streamlit call. Sets browser tab title/icon and layout.
@@ -126,8 +126,19 @@ else:
     # AI ASSISTANT PAGE
     # Natural-language Q&A with AI
     # --------------------------------------------------------------------
+       # --------------------------------------------------------------------
+    # AI ASSISTANT PAGE
+    # Natural-language Q&A with AI
+    # --------------------------------------------------------------------
     elif page == "🤖 AI Assistant":
         render_ai_assistant_page()
+
+    # --------------------------------------------------------------------
+    # PREDICTION PAGE
+    # Train ML models and make predictions
+    # --------------------------------------------------------------------
+    elif page == "🔮 Prediction":
+        render_prediction_page()
 
     # --------------------------------------------------------------------
     # EXPORT PAGE
