@@ -59,16 +59,17 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 
 def clean_pdf_text(text):
     """
-    Convert Unicode text into Latin-1 safe text for FPDF.
+    Convert Unicode text into ASCII-safe text for FPDF.
     
     This function handles all Unicode characters by:
     1. Converting to string if None
     2. Replacing common Unicode symbols with ASCII equivalents
-    3. Removing any remaining non-Latin-1 characters
-    4. Ensuring the result is always a valid Latin-1 string
+    3. Removing any remaining non-ASCII characters
+    4. Ensuring the result is always a valid ASCII string
+    5. Ensuring text is not empty and contains printable characters
     """
     if text is None:
-        return ""
+        return "N/A"
 
     text = str(text)
 
@@ -168,20 +169,24 @@ def clean_pdf_text(text):
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    # Remove any remaining non-Latin-1 characters
+    # Remove any remaining non-ASCII characters - use ASCII only
     try:
-        # Try to encode as Latin-1, ignoring characters that can't be encoded
-        cleaned = text.encode("latin-1", "ignore").decode("latin-1")
-        return cleaned
-    except (UnicodeEncodeError, UnicodeDecodeError):
-        # If that fails, use a more aggressive approach
-        try:
-            # Replace any non-ASCII characters with their closest ASCII equivalent
-            cleaned = text.encode("ascii", "ignore").decode("ascii")
-            return cleaned
-        except Exception:
-            # Last resort: return empty string
-            return ""
+        cleaned = text.encode("ascii", "ignore").decode("ascii")
+    except Exception:
+        return "N/A"
+
+    # Ensure text is not empty
+    if not cleaned.strip():
+        return "N/A"
+    
+    # Ensure all characters are printable
+    cleaned = ''.join(c if c.isprintable() or c.isspace() else '?' for c in cleaned)
+    
+    # Final check - if still empty, return N/A
+    if not cleaned.strip():
+        return "N/A"
+    
+    return cleaned
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -525,7 +530,8 @@ def _section_title(pdf, title, subtitle=None):
         sub_text = clean_pdf_text(subtitle)
         if len(sub_text) > 80:
             sub_text = sub_text[:77] + "..."
-        pdf.multi_cell(0, 5, sub_text)
+        # Use cell instead of multi_cell to avoid space issues
+        pdf.cell(0, 5, sub_text, ln=True)
     pdf.ln(2)
     pdf.set_text_color(0, 0, 0)
 
@@ -536,7 +542,8 @@ def _body(pdf, text):
     body_text = clean_pdf_text(text)
     if len(body_text) > 500:
         body_text = body_text[:497] + "..."
-    pdf.multi_cell(0, 5, body_text)
+    # Use simple cell instead of multi_cell to avoid space issues
+    pdf.cell(0, 5, body_text, ln=True)
     pdf.ln(2)
 
 
@@ -550,13 +557,20 @@ def _add_kpi_card(pdf, title, value, color, x, y, w=45, h=20):
     title_text = clean_pdf_text(title)
     if len(title_text) > 10:
         title_text = title_text[:8] + ".."
-    pdf.cell(w - 6, 4, title_text, ln=True)
+    # Use cell with auto width to avoid space issues
+    try:
+        pdf.cell(w - 6, 4, title_text, ln=True)
+    except Exception:
+        pdf.cell(w - 6, 4, "N/A", ln=True)
     pdf.set_xy(x + 3, y + 10)
     pdf.set_font("Arial", "B", 12)
     val_text = clean_pdf_text(str(value))
     if len(val_text) > 8:
         val_text = val_text[:6] + ".."
-    pdf.cell(w - 6, 6, val_text, ln=True)
+    try:
+        pdf.cell(w - 6, 6, val_text, ln=True)
+    except Exception:
+        pdf.cell(w - 6, 6, "N/A", ln=True)
     pdf.set_text_color(0, 0, 0)
 
 
@@ -694,12 +708,15 @@ def add_statistics(pdf, df):
     stats = numeric.describe().round(2)
 
     for column in stats.columns:
-        _ensure_space(pdf, 8 + len(stats.index) * 7)
+        _ensure_space(pdf, 8 + len(stats.index) * 6)
 
         pdf.set_fill_color(*PRIMARY)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Arial", "B", 10)
-        pdf.cell(0, 8, clean_pdf_text(column), ln=True, fill=True)
+        col_text = clean_pdf_text(column)
+        if len(col_text) > 40:
+            col_text = col_text[:37] + "..."
+        pdf.cell(0, 8, col_text, ln=True, fill=True)
 
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", "", 9)
@@ -707,12 +724,17 @@ def add_statistics(pdf, df):
             idx_text = clean_pdf_text(str(idx))
             val_text = clean_pdf_text(str(stats.loc[idx, column]))
             # Truncate if too long for cell
-            if len(idx_text) > 25:
-                idx_text = idx_text[:22] + "..."
-            if len(val_text) > 25:
-                val_text = val_text[:22] + "..."
-            pdf.cell(50, 7, idx_text, border=1)
-            pdf.cell(50, 7, val_text, border=1, ln=True)
+            if len(idx_text) > 15:
+                idx_text = idx_text[:12] + "..."
+            if len(val_text) > 15:
+                val_text = val_text[:12] + "..."
+            # Ensure text is not empty and is renderable
+            if not idx_text.strip() or not idx_text.isprintable():
+                idx_text = "N/A"
+            if not val_text.strip() or not val_text.isprintable():
+                val_text = "N/A"
+            # Simple text format without borders to avoid space issues
+            pdf.cell(0, 6, f"{idx_text}: {val_text}", ln=True)
         pdf.ln(4)
 
 
@@ -724,7 +746,7 @@ def add_ai_insights(pdf, ai_text):
     clean_text = re.sub(r"[^\x00-\x7F]+", " ", ai_text or "No AI insights were generated for this dataset.")
     pdf.set_font("Arial", "", 10)
     pdf.set_fill_color(*LIGHT)
-    pdf.multi_cell(0, 8, clean_pdf_text(clean_text[:1200]), border=1, fill=True)
+    pdf.multi_cell(0, 8, clean_pdf_text(clean_text[:1200]), fill=True)
     pdf.ln(4)
 
 
@@ -751,7 +773,10 @@ def add_recommendations(pdf, df):
 
     pdf.set_font("Arial", "", 10)
     for rec in recommendations:
-        pdf.multi_cell(0, 7, clean_pdf_text(f"-  {rec}"))
+        rec_text = clean_pdf_text(f"-  {rec}")
+        if len(rec_text) > 100:
+            rec_text = rec_text[:97] + "..."
+        pdf.cell(0, 7, rec_text, ln=True)
     pdf.ln(3)
 
 
@@ -764,7 +789,7 @@ def add_summary(pdf, df):
     pdf.set_fill_color(*PRIMARY)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 12, clean_pdf_text(f"Overall Dataset Quality: {score}/100"), ln=True, fill=True)
+    pdf.multi_cell(0, 12, clean_pdf_text(f"Overall Dataset Quality: {score}/100"), fill=True)
     pdf.set_text_color(0, 0, 0)
     pdf.ln(3)
 
@@ -776,7 +801,7 @@ def add_summary(pdf, df):
         verdict = "Needs work — address missing values and duplicates before deeper analysis."
 
     pdf.set_font("Arial", "", 11)
-    pdf.multi_cell(0, 8, clean_pdf_text(verdict))
+    pdf.cell(0, 8, clean_pdf_text(verdict), ln=True)
 
 
 def export_dataset_report(df, ai_text=""):
@@ -829,16 +854,16 @@ def export_dataset_report(df, ai_text=""):
         pdf.set_text_color(255, 255, 255)
         pdf.set_xy(15, 15)
         pdf.set_font("Arial", "B", 22)
-        pdf.cell(0, 10, clean_pdf_text("DataLens AI Report"))
+        pdf.multi_cell(0, 10, clean_pdf_text("DataLens AI Report"))
         pdf.set_xy(15, 30)
         pdf.set_font("Arial", "", 11)
-        pdf.cell(0, 8, clean_pdf_text("Professional dataset analysis with AI-ready insights"))
+        pdf.multi_cell(0, 8, clean_pdf_text("Professional dataset analysis with AI-ready insights"))
         pdf.set_xy(15, 43)
         pdf.set_font("Arial", "", 10)
         filename_text = clean_pdf_text(f"Dataset: {filename}")
         if len(filename_text) > 50:
             filename_text = filename_text[:47] + "..."
-        pdf.cell(0, 6, filename_text)
+        pdf.multi_cell(0, 6, filename_text)
         pdf.set_text_color(0, 0, 0)
 
         pdf.set_xy(15, 65)
@@ -870,8 +895,13 @@ def export_dataset_report(df, ai_text=""):
                 key_text = key_text[:22] + "..."
             if len(val_text) > 40:
                 val_text = val_text[:37] + "..."
-            pdf.cell(60, 7, key_text, border=1)
-            pdf.cell(100, 7, val_text, border=1, ln=True)
+            # Ensure text is not empty
+            if not key_text.strip():
+                key_text = "N/A"
+            if not val_text.strip():
+                val_text = "N/A"
+            # Use simple text format without borders
+            pdf.cell(0, 7, f"{key_text}: {val_text}", ln=True)
 
         # ── Page 2+: missing values → statistics → correlation → charts ──
         pdf.add_page()
@@ -882,9 +912,10 @@ def export_dataset_report(df, ai_text=""):
                 name_text = clean_pdf_text(str(name))
                 if len(name_text) > 35:
                     name_text = name_text[:32] + "..."
-                pdf.cell(80, 6, name_text, border=1)
-                pdf.cell(30, 6, clean_pdf_text(str(int(row["missing_count"]))), border=1)
-                pdf.cell(25, 6, clean_pdf_text(f"{row['share']}%"), border=1, ln=True)
+                miss_count = int(row["missing_count"])
+                share_pct = f"{row['share']}%"
+                # Use simple text format without borders
+                pdf.cell(0, 6, f"{name_text}: {miss_count} missing ({share_pct})", ln=True)
             pdf.ln(3)
             missing_chart = create_missing_chart(df)
             if missing_chart:
