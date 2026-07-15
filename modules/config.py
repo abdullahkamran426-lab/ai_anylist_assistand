@@ -1,49 +1,52 @@
 """
-Application Configuration Constants
-This file contains all configuration constants used throughout the application.
+App-wide Configuration Constants
+==================================
 """
 
-# ============================================================================
-# DATA SAMPLING CONFIGURATION
-# ============================================================================
-# Row count above which we offer to work on a random sample instead of the full
-# dataframe, so Statistics/Visualizations stay responsive on big CSVs.
-LARGE_DF_THRESHOLD = 100_000
-
-
-# ============================================================================
-# NAVIGATION CONFIGURATION
-# ============================================================================
-# Navigation options - must match CSS nth-of-type selectors in styles.py
-# The order is important as CSS targets specific positions for section labels
+# ----------------------------------------------------------------------------
+# NAVIGATION
+# Master list of pages, in sidebar display order.
+#
+# IMPORTANT: modules/style/sidebar.py's CSS uses :nth-of-type(3), (4), (7),
+# and (9) to draw the PREPARE / EXPLORE / INSIGHTS / MORE section-group labels
+# above specific nav items. Those positions assume THIS exact order:
+#   3 = Clean Data (PREPARE), 4 = Dataset Preview (EXPLORE),
+#   7 = AI Assistant (INSIGHTS), 9 = About (MORE).
+# If you reorder this list, update those nth-of-type selectors to match.
+# ----------------------------------------------------------------------------
 NAV_OPTIONS = [
-    "🏠 Home",              # Landing page with app overview
-    "📂 Upload Dataset",    # CSV upload page
-    "🧹 Clean Data",        # Interactive data cleaning
-    "🔍 Dataset Preview",   # View the loaded dataset
-    "📊 Statistics",         # Statistical summaries
-    "📈 Visualizations",    # Plotly charts
-    "🤖 AI Assistant",      # AI-powered Q&A
-    "📄 Export Report",     # Download PDF report
-    "ℹ️ About"              # App information
+    "🏠 Home",
+    "📂 Upload Dataset",
+    "🧹 Clean Data",
+    "🔍 Dataset Preview",
+    "📊 Statistics",
+    "📈 Visualizations",
+    "🤖 AI Assistant",
+    "📄 Export Report",
+    "ℹ️ About",
 ]
 
-
-# ============================================================================
-# SESSION STATE CONFIGURATION
-# ============================================================================
-# Session state keys with their default values.
-# Streamlit reruns the entire script on every interaction, so we use
-# session_state to persist data across reruns.
+# ----------------------------------------------------------------------------
+# SESSION STATE DEFAULTS
+# Every key the app relies on across reruns, seeded once by
+# modules.session.initialize_session_state().
+# ----------------------------------------------------------------------------
 SESSION_STATE_DEFAULTS = {
-    "df": None,                    # Current (possibly cleaned) working dataframe
-    "original_df": None,           # Untouched copy for "Reset to original" button
-    "filename": None,              # Name of uploaded file (shown in sidebar/export)
-    "answer": None,                # Most recent AI answer (used by Export Report page)
-    "clean_log": [],               # List of cleaning actions applied (audit trail)
-    "selected_chart_column": None, # Column to pre-select when redirecting to Visualizations
-    "selected_chart_type": None,   # Chart type to pre-select for the same redirect
-    "redirect_to": None,           # Page name to force-navigate to on next rerun
-    "chat_history": [],            # List of {"q":..., "a":...} turns for AI chat UI
-    "ai_prefill": "",              # Text to pre-fill AI question box (from suggestion chips)
+    "df": None,                    # the current (possibly cleaned) working dataframe
+    "original_df": None,           # untouched copy, used by the "Reset to original" button
+    "filename": None,              # name of the uploaded file, shown in the sidebar/export
+    "answer": None,                # most recent AI answer, used by the Export Report page
+    "clean_log": [],               # human-readable list of cleaning actions applied so far
+    "selected_chart_column": None, # column to pre-select when Statistics redirects to Visualizations
+    "selected_chart_type": None,   # chart type to pre-select for the same redirect
+    "redirect_to": None,           # page name to force-navigate to on the next rerun
+    "chat_history": [],            # list of {"q":..., "a":...} turns for the AI chat UI
+    "ai_prefill": "",              # text to pre-fill the AI question box (from a suggestion chip)
 }
+
+# ----------------------------------------------------------------------------
+# DATA HANDLING
+# Row count above which we offer to work on a random sample instead of the
+# full dataframe, so Statistics/Visualizations stay responsive on big CSVs.
+# ----------------------------------------------------------------------------
+LARGE_DF_THRESHOLD = 100_000

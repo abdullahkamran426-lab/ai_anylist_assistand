@@ -129,7 +129,7 @@ def render_sidebar():
             # Wipes every piece of state tied to the current dataset
             # Then reruns to reflect the cleared state
             # ------------------------------------------------------------------------
-            if st.button("🗑️ Clear dataset", key="clear_dataset", use_container_width=True):
+            if st.button("🗑️ Clear dataset", key="clear_dataset", width="stretch"):
                 clear_dataset_state()
                 st.rerun()
 
