@@ -13,6 +13,7 @@ one module per page so each is easier to find, read, and edit independently:
         statistics.py         render_statistics_page()
         visualizations.py     render_visualizations_page()
         ai_assistant.py       render_ai_assistant_page()
+        prediction.py         render_prediction_page()
         export_report.py      render_export_page()
         about.py              render_about_page()
 
@@ -34,6 +35,7 @@ from .dataset_preview import render_dataset_preview_page
 from .statistics import render_statistics_page
 from .visualizations import render_visualizations_page
 from .ai_assistant import render_ai_assistant_page
+from .prediction import render_prediction_page
 from .export_report import render_export_page
 from .about import render_about_page
 
@@ -45,6 +47,7 @@ __all__ = [
     "render_statistics_page",
     "render_visualizations_page",
     "render_ai_assistant_page",
+    "render_prediction_page",
     "render_export_page",
     "render_about_page",
 ]
