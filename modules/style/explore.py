@@ -40,21 +40,34 @@ EXPLORE_CSS = """
 
 /* ============================================================================
    COLUMN CHIP GRID
-   Grid of column detail cards for Dataset Preview page
+   Grid of column detail cards for Dataset Preview -> Column Details tab.
+   auto-fill lets as many chips per row as fit at 170px each, so all columns
+   are visible with minimal scrolling instead of stacking 1-per-row.
 ============================================================================ */
-.col-chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.col-chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 .col-chip {
     background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 14px 16px; transition: border-color .15s;
+    padding: 12px 14px; transition: border-color .15s;
+    /* Fixed, "normal" height for every card regardless of column-name length —
+       content is arranged with flexbox so the health bar always sits at the
+       bottom instead of the card stretching to fit long names or wrapped text. */
+    height: 108px; box-sizing: border-box;
+    display: flex; flex-direction: column; justify-content: space-between;
+    overflow: hidden;
 }
 .col-chip:hover { border-color: var(--accent); }
-.col-chip .cc-name { font-weight: 700; color: #fff; font-size: .86rem; margin-bottom: 8px; word-break: break-all; }
-.col-chip .cc-type {
-    display: inline-block; font-size: .66rem; font-weight: 700; padding: 2px 9px;
-    border-radius: 99px; margin-bottom: 8px; letter-spacing: .03em; text-transform: uppercase;
+.col-chip .cc-name {
+    font-weight: 700; color: #fff; font-size: .82rem; line-height: 1.2;
+    /* Long column names get an ellipsis instead of wrapping and pushing the
+       card taller — a tooltip via `title` still shows the full name on hover. */
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.col-chip .cc-meta { color: var(--muted); font-size: .76rem; margin-top: 4px; }
-.col-chip .cc-bar { background: rgba(255,255,255,.07); border-radius: 99px; height: 4px; overflow: hidden; margin-top: 8px; }
+.col-chip .cc-type {
+    display: inline-block; font-size: .64rem; font-weight: 700; padding: 2px 9px;
+    border-radius: 99px; letter-spacing: .03em; text-transform: uppercase; width: fit-content;
+}
+.col-chip .cc-meta { color: var(--muted); font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.col-chip .cc-bar { background: rgba(255,255,255,.07); border-radius: 99px; height: 4px; overflow: hidden; }
 .col-chip .cc-bar-fill { height: 100%; border-radius: 99px; }
 .type-num  { background: rgba(99,102,241,.16); color: #818cf8; }
 .type-obj  { background: rgba(34,211,165,.16); color: #22d3a5; }
