@@ -134,13 +134,13 @@ def render_visualizations_page():
         """, unsafe_allow_html=True)
 
         if "Bar" in chart and cats and selected_col:
-            st.plotly_chart(plot_bar(df, selected_col), use_container_width=True)
+            st.plotly_chart(plot_bar(df, selected_col), width='stretch')
         elif "Histogram" in chart and nums and selected_col:
-            st.plotly_chart(plot_histogram(df, selected_col), use_container_width=True)
+            st.plotly_chart(plot_histogram(df, selected_col), width='stretch')
         elif "Pie" in chart and cats and selected_col:
-            st.plotly_chart(plot_pie(df, selected_col), use_container_width=True)
+            st.plotly_chart(plot_pie(df, selected_col), width='stretch')
         elif "Scatter" in chart and x_col and y_col:
-            st.plotly_chart(plot_scatter(df, x_col, y_col), use_container_width=True)
+            st.plotly_chart(plot_scatter(df, x_col, y_col), width='stretch')
         else:
             st.info("Not enough columns of the required type for this chart.")
 

@@ -112,12 +112,12 @@ def render_upload_page():
         # ------------------------------------------------------------------------
         prev_tab, types_tab = st.tabs(["👁️ Preview", "🧬 Column types"])
         with prev_tab:
-            st.dataframe(df.head(10), use_container_width=True)
+            st.dataframe(df.head(10), width='stretch')
         with types_tab:
             dtype_df = df.dtypes.rename("Type").astype(str).to_frame()
             dtype_df["Nulls"] = df.isna().sum()
             dtype_df["Unique values"] = df.nunique()
-            st.dataframe(dtype_df, use_container_width=True)
+            st.dataframe(dtype_df, width='stretch')
 
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         st.markdown("<div class='section-label'>NEXT UP</div>", unsafe_allow_html=True)
@@ -141,6 +141,6 @@ def render_upload_page():
                     <div class='n-desc'>{desc}</div>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button("Go →", key=f"go_{target}", use_container_width=True):
+                if st.button("Go →", key=f"go_{target}", width='stretch'):
                     st.session_state.redirect_to = target
                     st.rerun()

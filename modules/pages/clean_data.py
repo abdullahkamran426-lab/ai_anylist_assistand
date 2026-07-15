@@ -90,7 +90,7 @@ def render_clean_data_page():
             data=csv_bytes,
             file_name=clean_filename,
             mime="text/csv",
-            use_container_width=True,
+            width='stretch',
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -252,7 +252,7 @@ def render_clean_data_page():
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
         rc1, rc2 = st.columns(2)
         with rc1:
-            if st.button("↩️ Reset to original", key="reset_clean", use_container_width=True):
+            if st.button("↩️ Reset to original", key="reset_clean", width='stretch'):
                 st.session_state.df = st.session_state.original_df.copy()
                 st.session_state.clean_log = ["↩️ Reset to original dataset"]
                 st.rerun()
@@ -263,7 +263,7 @@ def render_clean_data_page():
                 file_name=clean_filename,
                 mime="text/csv",
                 key="dl_csv_bottom",
-                use_container_width=True,
+                width='stretch',
             )
 
     with prev:
@@ -272,7 +272,7 @@ def render_clean_data_page():
         # Right-hand column always reflects current df state
         # --------------------------------------------------------------------
         st.markdown("#### Live Preview")
-        st.dataframe(df.head(50), use_container_width=True, height=340)
+        st.dataframe(df.head(50), width='stretch', height=340)
 
         # Missing-value heatmap summary
         if df.isna().any().any():
@@ -282,7 +282,7 @@ def render_clean_data_page():
                       .to_frame()
                       .assign(Pct=lambda d: (d["Missing"]/len(df)*100).round(2))
                       .query("Missing > 0"))
-            st.dataframe(miss, use_container_width=True)
+            st.dataframe(miss, width='stretch')
 
         # Clean log - running audit trail
         if st.session_state.clean_log:
