@@ -82,7 +82,7 @@ def render_statistics_page():
         stats = get_numeric_stats(analysis_df)
         if stats is not None and not stats.empty:
             st.markdown("<div class='stat-panel'><h4>📐 Summary statistics</h4>", unsafe_allow_html=True)
-            st.dataframe(stats, width='stretch')
+            st.dataframe(stats)
             st.markdown("</div>", unsafe_allow_html=True)
 
             # Visualize a column option with redirect to Visualizations
@@ -132,7 +132,7 @@ def render_statistics_page():
                 """
             st.markdown(rows_html, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
-        st.dataframe(miss, width='stretch')
+        st.dataframe(miss)
 
     # ========================================================================
     # VALUE COUNTS TAB
@@ -159,6 +159,6 @@ def render_statistics_page():
                 """
             st.markdown(rows_html, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
-            st.dataframe(vc, width='stretch')
+            st.dataframe(vc)
         else:
             st.info("No categorical columns found.")

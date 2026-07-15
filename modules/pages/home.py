@@ -61,7 +61,7 @@ def render_home_page():
     # Prominent button to upload a dataset
     # ------------------------------------------------------------------------
     st.markdown("<div style='text-align:center;margin:32px 0'>", unsafe_allow_html=True)
-    if st.button("📂 Upload a dataset", key="home_upload_btn", width='stretch'):
+    if st.button("Upload a dataset", key="home_upload_btn"):
         st.session_state.redirect_to = "📂 Upload Dataset"
         st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)

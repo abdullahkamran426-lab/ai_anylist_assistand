@@ -93,29 +93,29 @@ def render_visualizations_page():
     with chart_col:
         st.markdown("<div class='chart-card'><div class='cc-title'>Interactive visualization</div>", unsafe_allow_html=True)
         if chart == "📊 Bar" and cats and selected_col:
-            st.plotly_chart(plot_bar(df, selected_col), width="stretch")
+            st.plotly_chart(plot_bar(df, selected_col))
         elif chart == "📈 Histogram" and nums and selected_col:
-            st.plotly_chart(plot_histogram(df, selected_col), width="stretch")
+            st.plotly_chart(plot_histogram(df, selected_col))
         elif chart == "🥧 Pie" and cats and selected_col:
-            st.plotly_chart(plot_pie(df, selected_col), width="stretch")
+            st.plotly_chart(plot_pie(df, selected_col))
         elif chart == "📉 Scatter" and x_col and y_col:
-            st.plotly_chart(plot_scatter(df, x_col, y_col), width="stretch")
+            st.plotly_chart(plot_scatter(df, x_col, y_col))
         elif chart == "📦 Box Plot" and nums and selected_col:
-            st.plotly_chart(plot_box(df, selected_col), width="stretch")
+            st.plotly_chart(plot_box(df, selected_col))
         elif chart == "🎻 Violin Plot" and nums and selected_col:
-            st.plotly_chart(plot_violin(df, selected_col), width="stretch")
+            st.plotly_chart(plot_violin(df, selected_col))
         elif chart == "📐 Line Chart" and x_col and y_col:
-            st.plotly_chart(plot_line(df, x_col, y_col), width="stretch")
+            st.plotly_chart(plot_line(df, x_col, y_col))
         elif chart == "📈 Area Chart" and x_col and y_col:
-            st.plotly_chart(plot_area(df, x_col, y_col), width="stretch")
+            st.plotly_chart(plot_area(df, x_col, y_col))
         elif chart == "🫧 Bubble Chart" and x_col and y_col:
-            st.plotly_chart(plot_bubble(df, x_col, y_col, size_col=size_col), width="stretch")
+            st.plotly_chart(plot_bubble(df, x_col, y_col, size_col=size_col))
         elif chart == "🌳 Treemap" and selected_col:
-            st.plotly_chart(plot_treemap(df, [selected_col], selected_col), width="stretch")
+            st.plotly_chart(plot_treemap(df, [selected_col], selected_col))
         elif chart == "🌞 Sunburst" and selected_col:
-            st.plotly_chart(plot_sunburst(df, [selected_col], selected_col), width="stretch")
+            st.plotly_chart(plot_sunburst(df, [selected_col], selected_col))
         elif chart == "🧮 Correlation Matrix" and len(nums) >= 2:
-            st.plotly_chart(plot_correlation_matrix(df), width="stretch")
+            st.plotly_chart(plot_correlation_matrix(df))
         else:
             st.info("Not enough columns of the required type for this chart.")
         st.markdown("</div>", unsafe_allow_html=True)

@@ -96,7 +96,7 @@ def render_dataset_preview_page():
             else:
                 st.warning(f"No columns match '{search}'.")
 
-        st.dataframe(shown_df, width="stretch", height=460)
+        st.dataframe(shown_df, height=460)
 
     # ========================================================================
     # COLUMN DETAILS TAB

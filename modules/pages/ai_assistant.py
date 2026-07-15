@@ -69,7 +69,7 @@ def render_ai_assistant_page():
     chip_cols = st.columns(len(suggestions))
     for col, sug in zip(chip_cols, suggestions):
         with col:
-            if st.button(sug, key=f"chip_{sug}", width="stretch"):
+            if st.button(sug, key=f"chip_{sug}"):
                 st.session_state.ai_prefill = sug.split(" ", 1)[1]
 
     st.markdown("<div class='div'></div>", unsafe_allow_html=True)
@@ -109,7 +109,7 @@ def render_ai_assistant_page():
         )
         c1, c2 = st.columns([5, 1])
         with c2:
-            submitted = st.form_submit_button("Ask AI →", width="stretch")
+            submitted = st.form_submit_button("Ask AI →")
 
     if submitted:
         st.session_state.ai_prefill = ""
