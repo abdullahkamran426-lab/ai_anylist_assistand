@@ -726,7 +726,7 @@ def add_recommendations(pdf, df):
 
     pdf.set_font("Arial", "", 10)
     for rec in recommendations:
-        pdf.multi_cell(0, 7, f"-  {rec}")
+        pdf.multi_cell(0, 7, clean_pdf_text(f"-  {rec}"))
     pdf.ln(3)
 
 
