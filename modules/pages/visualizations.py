@@ -1,25 +1,30 @@
 """
 Visualizations page
 ===================
-Bar, histogram, pie and scatter charts powered by Plotly. Honors a
-one-time column/chart-type preselection set by the Statistics page's
-"visualize this column" shortcut (read from st.session_state, then
-cleared so it doesn't stick on later visits).
+Expanded Plotly-based chart gallery with the core portfolio of statistical visuals.
 """
 
 import streamlit as st
 
-from modules.visualization import plot_bar, plot_histogram, plot_pie, plot_scatter
+from modules.visualization import (
+    plot_area,
+    plot_bar,
+    plot_bubble,
+    plot_box,
+    plot_correlation_matrix,
+    plot_histogram,
+    plot_line,
+    plot_pie,
+    plot_scatter,
+    plot_sunburst,
+    plot_treemap,
+    plot_violin,
+)
 
 
 def render_visualizations_page():
-    """
-    Render the Visualizations page.
-    Bar, histogram, pie and scatter charts powered by Plotly.
-    """
     df = st.session_state.df
 
-    # Guard: this page requires data
     if df is None:
         st.markdown("""
         <div style='background:linear-gradient(135deg,rgba(34,211,165,.12) 0%,rgba(34,211,165,.03) 100%);
@@ -37,111 +42,80 @@ def render_visualizations_page():
         """, unsafe_allow_html=True)
         st.stop()
 
-    # ------------------------------------------------------------------------
-    # HERO STRIP
-    # ------------------------------------------------------------------------
-    st.markdown(f"""
+    st.markdown("""
     <div class='explore-hero'>
         <div class='eh-icon'>📈</div>
         <div>
             <div class='eh-title'>Visualizations</div>
-            <div class='eh-sub'>Bar, histogram, pie and scatter charts — powered by Plotly</div>
+            <div class='eh-sub'>Interactive charts for distributions, relationships, and structure</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ------------------------------------------------------------------------
-    # COLUMN CATEGORIZATION
-    # Separate numeric and categorical columns
-    # ------------------------------------------------------------------------
     nums = df.select_dtypes(include="number").columns.tolist()
     cats = df.select_dtypes(exclude="number").columns.tolist()
 
-    # ------------------------------------------------------------------------
-    # CHART TYPE SELECTOR
-    # Use segmented_control if available, otherwise radio
-    # ------------------------------------------------------------------------
     default_chart = st.session_state.selected_chart_type or "📊 Bar"
-    chart_options = ["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter"]
-    if hasattr(st, "segmented_control"):
-        try:
-            chart = st.segmented_control(
-                "Chart type", chart_options, default=default_chart,
-                label_visibility="collapsed",
-            )
-        except TypeError:
-            chart = st.segmented_control("Chart type", chart_options, default=default_chart)
-    else:
-        chart = st.radio(
-            "Chart type", chart_options, horizontal=True,
-            index=chart_options.index(default_chart),
-            label_visibility="collapsed",
-        )
+    chart_options = ["📊 Bar", "📈 Histogram", "🥧 Pie", "📉 Scatter", "📦 Box Plot", "🎻 Violin Plot", "📐 Line Chart", "📈 Area Chart", "🫧 Bubble Chart", "🌳 Treemap", "🌞 Sunburst", "🧮 Correlation Matrix"]
+    chart = st.radio("Chart type", chart_options, horizontal=True, index=chart_options.index(default_chart), label_visibility="collapsed")
 
-    # Consume one-time preselection so later visits start fresh
     preselect_col = st.session_state.selected_chart_column
     st.session_state.selected_chart_type = None
     st.session_state.selected_chart_column = None
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ------------------------------------------------------------------------
-    # CHART TITLES
-    # ------------------------------------------------------------------------
-    chart_titles = {
-        "📊 Bar": "Bar chart — category frequency",
-        "📈 Histogram": "Histogram — value distribution",
-        "🥧 Pie": "Pie chart — category share",
-        "📉 Scatter": "Scatter plot — relationship between two variables",
-    }
-
-    # ------------------------------------------------------------------------
-    # TWO-COLUMN LAYOUT
-    # Left: chart settings, Right: chart output
-    # ------------------------------------------------------------------------
     picker_col, chart_col = st.columns([1, 2.4], gap="large")
-
     with picker_col:
         st.markdown("<div class='stat-panel'><h4>⚙️ Chart settings</h4>", unsafe_allow_html=True)
         selected_col = None
-        x_col = y_col = None
-        
-        # Select column based on chart type
-        if "Bar" in chart and cats:
+        x_col = y_col = size_col = None
+
+        if chart in {"📊 Bar", "🥧 Pie"} and cats:
             idx = cats.index(preselect_col) if preselect_col in cats else 0
             selected_col = st.selectbox("Category column", cats, index=idx)
-        elif "Histogram" in chart and nums:
+        elif chart in {"📈 Histogram", "📦 Box Plot", "🎻 Violin Plot"} and nums:
             idx = nums.index(preselect_col) if preselect_col in nums else 0
             selected_col = st.selectbox("Numeric column", nums, index=idx)
-        elif "Pie" in chart and cats:
-            idx = cats.index(preselect_col) if preselect_col in cats else 0
-            selected_col = st.selectbox("Category column", cats, index=idx)
-        elif "Scatter" in chart and len(nums) >= 2:
+        elif chart in {"📉 Scatter", "📐 Line Chart", "📈 Area Chart", "🫧 Bubble Chart"} and len(nums) >= 2:
             x_col = st.selectbox("X axis", nums)
-            y_col = st.selectbox("Y axis", nums, index=1)
+            y_col = st.selectbox("Y axis", nums, index=min(1, len(nums) - 1))
+            if chart == "🫧 Bubble Chart":
+                size_col = st.selectbox("Bubble size", nums + [None], index=len(nums))
+        elif chart == "🌳 Treemap" and len(cats) >= 1:
+            selected_col = st.selectbox("Category column", cats)
+        elif chart == "🌞 Sunburst" and len(cats) >= 2:
+            selected_col = st.selectbox("Category column", cats)
+        elif chart == "🧮 Correlation Matrix" and len(nums) >= 2:
+            st.caption("Correlation matrix uses all numeric columns.")
         else:
-            st.caption("Not enough columns of the required type for this chart.")
+            st.caption("Not enough columns for this chart type.")
         st.markdown("</div>", unsafe_allow_html=True)
 
     with chart_col:
-        # --------------------------------------------------------------------
-        # CHART OUTPUT
-        # Render the selected chart type
-        # --------------------------------------------------------------------
-        st.markdown(f"""
-        <div class='chart-card'>
-            <div class='cc-title'>{chart_titles.get(chart, '')}</div>
-        """, unsafe_allow_html=True)
-
-        if "Bar" in chart and cats and selected_col:
-            st.plotly_chart(plot_bar(df, selected_col), width='stretch')
-        elif "Histogram" in chart and nums and selected_col:
-            st.plotly_chart(plot_histogram(df, selected_col), width='stretch')
-        elif "Pie" in chart and cats and selected_col:
-            st.plotly_chart(plot_pie(df, selected_col), width='stretch')
-        elif "Scatter" in chart and x_col and y_col:
-            st.plotly_chart(plot_scatter(df, x_col, y_col), width='stretch')
+        st.markdown("<div class='chart-card'><div class='cc-title'>Interactive visualization</div>", unsafe_allow_html=True)
+        if chart == "📊 Bar" and cats and selected_col:
+            st.plotly_chart(plot_bar(df, selected_col), width="stretch")
+        elif chart == "📈 Histogram" and nums and selected_col:
+            st.plotly_chart(plot_histogram(df, selected_col), width="stretch")
+        elif chart == "🥧 Pie" and cats and selected_col:
+            st.plotly_chart(plot_pie(df, selected_col), width="stretch")
+        elif chart == "📉 Scatter" and x_col and y_col:
+            st.plotly_chart(plot_scatter(df, x_col, y_col), width="stretch")
+        elif chart == "📦 Box Plot" and nums and selected_col:
+            st.plotly_chart(plot_box(df, selected_col), width="stretch")
+        elif chart == "🎻 Violin Plot" and nums and selected_col:
+            st.plotly_chart(plot_violin(df, selected_col), width="stretch")
+        elif chart == "📐 Line Chart" and x_col and y_col:
+            st.plotly_chart(plot_line(df, x_col, y_col), width="stretch")
+        elif chart == "📈 Area Chart" and x_col and y_col:
+            st.plotly_chart(plot_area(df, x_col, y_col), width="stretch")
+        elif chart == "🫧 Bubble Chart" and x_col and y_col:
+            st.plotly_chart(plot_bubble(df, x_col, y_col, size_col=size_col), width="stretch")
+        elif chart == "🌳 Treemap" and selected_col:
+            st.plotly_chart(plot_treemap(df, [selected_col], selected_col), width="stretch")
+        elif chart == "🌞 Sunburst" and selected_col:
+            st.plotly_chart(plot_sunburst(df, [selected_col], selected_col), width="stretch")
+        elif chart == "🧮 Correlation Matrix" and len(nums) >= 2:
+            st.plotly_chart(plot_correlation_matrix(df), width="stretch")
         else:
             st.info("Not enough columns of the required type for this chart.")
-
         st.markdown("</div>", unsafe_allow_html=True)

@@ -3,14 +3,14 @@ import io
 import os
 import re
 import tempfile
-
-import streamlit as st
-import pandas as pd
-import numpy as np
-
-from fpdf import FPDF
+from datetime import datetime
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import streamlit as st
+from fpdf import FPDF
 
 
 # ==========================================================
@@ -22,61 +22,109 @@ def compute_file_hash(file_bytes):
 
 
 @st.cache_data
-def load_data(file_bytes):
+def load_data(file_bytes, filename="dataset.csv"):
+    """Load a supported dataset file into a pandas DataFrame."""
+    filename = (filename or "dataset.csv").lower()
+    buffer = io.BytesIO(file_bytes)
 
     try:
-        df = pd.read_csv(io.BytesIO(file_bytes), encoding="utf-8")
+        if filename.endswith(".csv"):
+            return _read_csv(buffer, sep=",")
+        if filename.endswith(".tsv"):
+            return _read_csv(buffer, sep="\t")
+        if filename.endswith(".xlsx"):
+            return pd.read_excel(buffer)
+        if filename.endswith(".json"):
+            return pd.read_json(buffer, orient="records", convert_dates=True)
+        if filename.endswith(".parquet"):
+            try:
+                return pd.read_parquet(buffer)
+            except ImportError as exc:
+                raise ImportError("Parquet support requires pyarrow or fastparquet.") from exc
+        return _read_csv(buffer, sep=",")
+    except Exception:
+        if filename.endswith(".csv") or filename.endswith(".tsv"):
+            for encoding in ["utf-8", "cp1252", "latin1"]:
+                try:
+                    buffer.seek(0)
+                    return pd.read_csv(buffer, sep="," if filename.endswith(".csv") else "\t", encoding=encoding)
+                except UnicodeDecodeError:
+                    continue
+        raise
 
-    except UnicodeDecodeError:
 
+def _read_csv(buffer, sep=","):
+    for encoding in ["utf-8", "cp1252", "latin1"]:
         try:
-            df = pd.read_csv(io.BytesIO(file_bytes), encoding="cp1252")
-
+            buffer.seek(0)
+            return pd.read_csv(buffer, sep=sep, encoding=encoding)
         except UnicodeDecodeError:
-
-            df = pd.read_csv(io.BytesIO(file_bytes), encoding="latin1")
-
-    return df
+            continue
+    buffer.seek(0)
+    return pd.read_csv(buffer, sep=sep, encoding="utf-8", engine="python")
 
 
 @st.cache_data
 def clean_data(df):
+    """Apply light-touch cleaning while preserving the dataframe shape."""
+    cleaned = df.copy()
+    cleaned.columns = [str(col).strip() for col in cleaned.columns]
 
-    df = df.copy()
+    for column in cleaned.columns:
+        series = cleaned[column]
+        if pd.api.types.is_object_dtype(series) or pd.api.types.is_string_dtype(series):
+            cleaned[column] = series.astype(str).str.strip()
+            cleaned[column] = cleaned[column].replace({"nan": np.nan, "None": np.nan, "": np.nan})
 
-    if "Gross" in df.columns:
+            try:
+                numeric_series = pd.to_numeric(cleaned[column], errors="coerce")
+                if numeric_series.notna().sum() / max(len(cleaned), 1) > 0.8:
+                    cleaned[column] = numeric_series
+            except Exception:
+                pass
 
-        df["Gross"] = (
-            df["Gross"]
-            .replace(",", "", regex=True)
-        )
+    if "gross" in {col.lower() for col in cleaned.columns}:
+        gross_col = next(col for col in cleaned.columns if col.lower() == "gross")
+        cleaned[gross_col] = cleaned[gross_col].astype(str).str.replace(",", "", regex=False)
+        cleaned[gross_col] = pd.to_numeric(cleaned[gross_col], errors="coerce")
 
-        df["Gross"] = pd.to_numeric(
-            df["Gross"],
-            errors="coerce",
-        )
-
-    return df
+    cleaned = cleaned.drop_duplicates().reset_index(drop=True)
+    return cleaned
 
 
 @st.cache_data
 def get_summary(df, filename):
+    """Return a rich text summary for AI prompting and reporting."""
+    numeric = df.select_dtypes(include=np.number)
+    categorical = df.select_dtypes(exclude=np.number)
+    missing_summary = df.isna().sum().sort_values(ascending=False)
+    missing_top = missing_summary[missing_summary > 0].head(5).to_dict()
 
-    return f"""
-File : {filename}
+    summary_parts = [
+        f"Dataset: {filename or 'Uploaded dataset'}",
+        f"Rows: {df.shape[0]} | Columns: {df.shape[1]}",
+        f"Numeric columns: {', '.join(numeric.columns.tolist()) if not numeric.empty else 'None'}",
+        f"Categorical columns: {', '.join(categorical.columns.tolist()) if not categorical.empty else 'None'}",
+        f"Missing values: {int(df.isna().sum().sum())} total cells",
+    ]
 
-Rows : {df.shape[0]}
+    if missing_top:
+        summary_parts.append("Top missing value columns: " + ", ".join(f"{k} ({v})" for k, v in missing_top.items()))
 
-Columns : {df.shape[1]}
+    if not numeric.empty:
+        summary_parts.append("Numeric highlights:")
+        for col in numeric.columns[:5]:
+            series = numeric[col]
+            summary_parts.append(
+                f"- {col}: mean={series.mean():.2f}, median={series.median():.2f}, std={series.std():.2f}, missing={series.isna().sum()}"
+            )
 
-Column Names
+    if not categorical.empty:
+        top_col = categorical.columns[0]
+        counts = categorical[top_col].value_counts(dropna=False).head(5)
+        summary_parts.append(f"Top values in {top_col}: {', '.join(f'{k} ({v})' for k, v in counts.items())}")
 
-{list(df.columns)}
-
-Statistics
-
-{df.describe(include='all').fillna('').to_string()}
-"""
+    return "\n".join(summary_parts)
 
 
 # ==========================================================
@@ -84,41 +132,82 @@ Statistics
 # ==========================================================
 
 def get_numeric_stats(df):
-
+    """Return a richer descriptive statistics table for numeric columns."""
     numeric = df.select_dtypes(include=np.number)
+    if numeric.empty:
+        return pd.DataFrame()
 
-    if len(numeric.columns):
+    stats = []
+    for col in numeric.columns:
+        series = numeric[col].dropna()
+        if series.empty:
+            continue
+        stats.append(
+            {
+                "Column": col,
+                "Mean": round(float(series.mean()), 4),
+                "Median": round(float(series.median()), 4),
+                "Mode": round(float(series.mode().iloc[0]), 4) if not series.mode().empty else np.nan,
+                "Variance": round(float(series.var()), 4),
+                "Std Dev": round(float(series.std()), 4),
+                "Skewness": round(float(series.skew()), 4),
+                "Kurtosis": round(float(series.kurt()), 4),
+                "IQR": round(float(series.quantile(0.75) - series.quantile(0.25)), 4),
+                "Range": round(float(series.max() - series.min()), 4),
+                "Min": round(float(series.min()), 4),
+                "Max": round(float(series.max()), 4),
+            }
+        )
+    return pd.DataFrame(stats).set_index("Column")
 
-        return numeric.describe()
 
-    return None
+def get_missing_summary(df):
+    missing = df.isna().sum().rename("Missing").to_frame()
+    missing["Percentage"] = (missing["Missing"] / len(df) * 100).round(2) if len(df) else 0
+    return missing.sort_values(["Missing", "Percentage"], ascending=False)
 
 
 def get_category_counts(df, col):
-
-    return df[col].value_counts()
+    return df[col].value_counts(dropna=False)
 
 
 def calculate_quality_score(df):
-
-    score = 100
-
-    missing = (
-        df.isna().sum().sum()
-        /
-        (df.shape[0] * df.shape[1])
-    ) * 100
-
-    duplicate = (
-        df.duplicated().sum()
-        /
-        len(df)
-    ) * 100 if len(df) else 0
-
-    score -= missing * 0.5
-    score -= duplicate * 0.5
-
+    """Return a simple quality score from missing and duplicate rates."""
+    score = 100.0
+    total_cells = df.shape[0] * df.shape[1]
+    missing_rate = (df.isna().sum().sum() / total_cells) * 100 if total_cells else 0
+    duplicate_rate = (df.duplicated().sum() / len(df)) * 100 if len(df) else 0
+    score -= missing_rate * 0.5
+    score -= duplicate_rate * 0.5
     return max(0, round(score))
+
+
+def detect_outliers(df, column, method="iqr"):
+    series = pd.to_numeric(df[column], errors="coerce").dropna()
+    if series.empty:
+        return pd.Series(dtype=float)
+    if method == "zscore":
+        std = series.std()
+        mean = series.mean()
+        if std == 0:
+            return pd.Series(False, index=series.index)
+        z = (series - mean) / std
+        return (z.abs() > 3)
+    q1 = series.quantile(0.25)
+    q3 = series.quantile(0.75)
+    iqr = q3 - q1
+    lower = q1 - 1.5 * iqr
+    upper = q3 + 1.5 * iqr
+    return (series < lower) | (series > upper)
+
+
+def get_correlation_summary(df):
+    numeric = df.select_dtypes(include=np.number)
+    if numeric.empty or numeric.shape[1] < 2:
+        return pd.DataFrame()
+    corr = numeric.corr().round(3)
+    corr = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
+    return corr.stack().dropna().sort_values(ascending=False)
 
 
 # ==========================================================
@@ -126,76 +215,33 @@ def calculate_quality_score(df):
 # ==========================================================
 
 class ReportPDF(FPDF):
-
     def header(self):
-
-        self.set_fill_color(55, 80, 180)
-
-        self.set_text_color(255,255,255)
-
-        self.set_font("Arial","B",18)
-
-        self.cell(
-            0,
-            14,
-            "DataLens Professional Report",
-            ln=True,
-            align="C",
-            fill=True
-        )
-
-        self.ln(6)
-
-        self.set_text_color(0,0,0)
-
+        self.set_fill_color(79, 70, 229)
+        self.set_text_color(255, 255, 255)
+        self.set_font("Arial", "B", 18)
+        self.cell(0, 14, "DataLens Professional Report", ln=True, align="C", fill=True)
+        self.ln(4)
+        self.set_text_color(0, 0, 0)
 
     def footer(self):
-
         self.set_y(-15)
-
-        self.set_font("Arial","I",9)
-
-        self.set_text_color(120)
-
-        self.cell(
-            0,
-            10,
-            f"Page {self.page_no()}",
-            align="C"
-        )
+        self.set_font("Arial", "I", 9)
+        self.set_text_color(120, 120, 120)
+        self.cell(0, 10, f"Page {self.page_no()} • Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}", align="C")
 
 
-def section_title(pdf,title):
-
-    pdf.set_fill_color(70,110,255)
-
-    pdf.set_text_color(255)
-
-    pdf.set_font("Arial","B",13)
-
-    pdf.cell(
-        0,
-        9,
-        title,
-        ln=True,
-        fill=True
-    )
-
+def section_title(pdf, title):
+    pdf.set_fill_color(30, 64, 175)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 9, title, ln=True, fill=True)
     pdf.ln(2)
+    pdf.set_text_color(0, 0, 0)
 
-    pdf.set_text_color(0)
 
-
-def body(pdf,text):
-
-    pdf.set_font("Arial","",11)
-
-    pdf.multi_cell(
-        0,
-        7,
-        text
-    )
-
+def body(pdf, text, font_size=11):
+    pdf.set_font("Arial", "", font_size)
+    pdf.multi_cell(0, 6.5, text)
     pdf.ln(2)
 
 
@@ -203,201 +249,154 @@ def body(pdf,text):
 # CHART GENERATION
 # ==========================================================
 
-def create_numeric_chart(df):
-    """
-    Create a bar chart using the first numeric column.
-    Returns image path.
-    """
+def _save_chart_path(name):
+    return os.path.join(tempfile.gettempdir(), f"{name}.png")
 
+
+def create_summary_charts(df):
+    paths = {}
     numeric = df.select_dtypes(include=np.number)
+    categorical = df.select_dtypes(exclude=np.number)
 
-    if numeric.empty:
-        return None
+    if not numeric.empty:
+        col = numeric.columns[0]
+        fig, ax = plt.subplots(figsize=(4.5, 2.8))
+        numeric[col].dropna().head(20).plot(kind="bar", color="#4f46e5", ax=ax)
+        ax.set_title(f"{col} distribution")
+        ax.set_xlabel(col)
+        ax.set_ylabel("Value")
+        fig.tight_layout()
+        fig.savefig(_save_chart_path("pdf_histogram"), dpi=180)
+        plt.close(fig)
+        paths["histogram"] = _save_chart_path("pdf_histogram")
 
-    col = numeric.columns[0]
+    if not categorical.empty:
+        col = categorical.columns[0]
+        counts = categorical[col].value_counts().head(6)
+        fig, ax = plt.subplots(figsize=(4.5, 2.8))
+        counts.plot(kind="pie", autopct="%1.1f%%", startangle=90, ax=ax, colors=sns.color_palette("Set2", n_colors=len(counts)))
+        ax.set_title(f"{col} distribution")
+        ax.set_ylabel("")
+        fig.tight_layout()
+        fig.savefig(_save_chart_path("pdf_pie"), dpi=180)
+        plt.close(fig)
+        paths["pie"] = _save_chart_path("pdf_pie")
 
-    plt.figure(figsize=(7, 4))
+    if not numeric.empty and numeric.shape[1] > 1:
+        fig, ax = plt.subplots(figsize=(4.4, 3.4))
+        corr = numeric.corr()
+        sns.heatmap(corr, annot=False, cmap="Purples", ax=ax)
+        ax.set_title("Correlation heatmap")
+        fig.tight_layout()
+        fig.savefig(_save_chart_path("pdf_heatmap"), dpi=180)
+        plt.close(fig)
+        paths["heatmap"] = _save_chart_path("pdf_heatmap")
 
-    numeric[col].head(20).plot(
-        kind="bar",
-        color="#4F46E5"
-    )
-
-    plt.title(col)
-    plt.tight_layout()
-
-    path = os.path.join(
-        tempfile.gettempdir(),
-        "chart.png"
-    )
-
-    plt.savefig(path, dpi=200)
-
-    plt.close()
-
-    return path
+    return paths
 
 
 # ==========================================================
 # PDF REPORT
 # ==========================================================
 
-def export_dataset_report(df, ai_text=""):
-
+def export_dataset_report(df, ai_text="", filename=None):
+    """Generate a two-page, professional PDF report for the current dataset."""
     pdf = ReportPDF()
+    pdf.set_auto_page_break(True, margin=16)
+    display_name = filename or st.session_state.get("filename", "Dataset")
+    quality_score = calculate_quality_score(df)
+    missing_summary = get_missing_summary(df)
+    numeric = df.select_dtypes(include=np.number)
+    top_correlation = get_correlation_summary(df)
+    chart_paths = create_summary_charts(df)
 
-    pdf.set_auto_page_break(True, margin=15)
-
-    # ------------------------------------------------------
-    # PAGE 1
-    # ------------------------------------------------------
-
+    # ------------------------------------------------------------------
+    # Cover page
+    # ------------------------------------------------------------------
     pdf.add_page()
-
-    section_title(pdf, "Dataset Overview")
-
-    body(
-        pdf,
-        f"""
-Dataset Name : {st.session_state.get('filename','Dataset')}
-
-Rows : {df.shape[0]}
-
-Columns : {df.shape[1]}
-
-Memory Usage :
-{round(df.memory_usage(deep=True).sum()/1024,2)} KB
-"""
-    )
-
-    # ------------------------------------------------------
-
-    section_title(pdf, "Data Quality")
-
-    score = calculate_quality_score(df)
-
-    missing = int(df.isna().sum().sum())
-
-    duplicate = int(df.duplicated().sum())
-
-    body(
-        pdf,
-        f"""
-Quality Score : {score}/100
-
-Missing Values : {missing}
-
-Duplicate Rows : {duplicate}
-"""
-    )
-
-    # ------------------------------------------------------
-
-    section_title(pdf, "Column Information")
-
-    pdf.set_font("Arial", "", 10)
-
-    for col in df.columns:
-
-        pdf.cell(
-            95,
-            7,
-            col,
-            border=1
-        )
-
-        pdf.cell(
-            40,
-            7,
-            str(df[col].dtype),
-            border=1
-        )
-
-        pdf.cell(
-            40,
-            7,
-            str(df[col].isna().sum()),
-            border=1,
-            ln=True
-        )
-
+    pdf.set_fill_color(15, 23, 42)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 24)
+    pdf.cell(0, 18, "DataLens Professional Report", ln=True, align="C", fill=True)
+    pdf.ln(10)
+    pdf.set_font("Arial", "", 12)
+    pdf.set_text_color(0, 0, 0)
+    pdf.multi_cell(0, 7, f"Prepared for: {display_name}\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+    pdf.ln(6)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Dataset Snapshot", ln=True)
+    pdf.set_font("Arial", "", 11)
+    pdf.cell(0, 7, f"Rows: {df.shape[0]} | Columns: {df.shape[1]} | Quality Score: {quality_score}/100", ln=True)
     pdf.ln(5)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Key Highlights", ln=True)
+    pdf.set_font("Arial", "", 11)
+    body(pdf, f"- Missing values: {int(df.isna().sum().sum())}\n- Duplicate rows: {int(df.duplicated().sum())}\n- Numeric columns: {len(numeric.columns)}\n- AI summary available: {'Yes' if ai_text else 'No'}")
+    pdf.ln(6)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Recommendations", ln=True)
+    pdf.set_font("Arial", "", 10)
+    recommendations = [
+        "Review missing values before modeling.",
+        "Investigate extreme outliers on numeric variables.",
+        "Use the AI assistant for narrative insights.",
+    ]
+    for item in recommendations:
+        pdf.cell(0, 6, f"• {item}", ln=True)
 
-    # ------------------------------------------------------
-
-    chart = create_numeric_chart(df)
-
-    if chart:
-
-        section_title(pdf, "Dataset Chart")
-
-        pdf.image(chart, w=170)
-
-    # ------------------------------------------------------
-    # PAGE 2
-    # ------------------------------------------------------
-
+    # ------------------------------------------------------------------
+    # Analytical page
+    # ------------------------------------------------------------------
     pdf.add_page()
+    section_title(pdf, "Dataset Overview")
+    body(pdf, f"Dataset: {display_name}\nRows: {df.shape[0]}\nColumns: {df.shape[1]}\nMemory usage: {round(df.memory_usage(deep=True).sum() / 1024, 2)} KB")
+
+    section_title(pdf, "Missing Values Analysis")
+    if missing_summary.empty or (missing_summary["Missing"] == 0).all():
+        body(pdf, "No missing values detected.")
+    else:
+        missing_df = missing_summary.head(8).reset_index().rename(columns={"index": "Column"})
+        for _, row in missing_df.iterrows():
+            pdf.cell(0, 6, f"• {row['Column']}: {int(row['Missing'])} missing ({row['Percentage']}%)", ln=True)
 
     section_title(pdf, "Statistical Summary")
-
-    numeric = df.select_dtypes(include=np.number)
-
     if not numeric.empty:
-
         stats = numeric.describe().round(2)
-
-        pdf.set_font("Arial", "", 8)
-
-        for column in stats.columns:
-
+        for col in stats.columns[:3]:
             pdf.set_font("Arial", "B", 10)
-
-            pdf.cell(
-                0,
-                8,
-                column,
-                ln=True
-            )
-
+            pdf.cell(0, 7, f"{col}", ln=True)
             pdf.set_font("Arial", "", 8)
-
             for idx in stats.index:
+                pdf.cell(35, 5, str(idx), border=1)
+                pdf.cell(35, 5, str(stats.loc[idx, col]), border=1, ln=True)
+            pdf.ln(2)
 
-                pdf.cell(
-                    45,
-                    6,
-                    str(idx),
-                    border=1
-                )
+    section_title(pdf, "Correlation Insights")
+    if not top_correlation.empty:
+        top_pairs = top_correlation.head(6)
+        for idx, value in top_pairs.items():
+            left, right = idx
+            pdf.cell(0, 6, f"• {left} ↔ {right}: correlation {value:.3f}", ln=True)
+    else:
+        body(pdf, "Not enough numeric columns for correlation analysis.")
 
-                pdf.cell(
-                    45,
-                    6,
-                    str(stats.loc[idx, column]),
-                    border=1,
-                    ln=True
-                )
-
-            pdf.ln(4)
-
-    # ------------------------------------------------------
+    if "histogram" in chart_paths:
+        pdf.add_page()
+        section_title(pdf, "Charts")
+        pdf.image(chart_paths["histogram"], x=12, y=40, w=85)
+        if "pie" in chart_paths:
+            pdf.image(chart_paths["pie"], x=105, y=40, w=85)
+        if "heatmap" in chart_paths:
+            pdf.image(chart_paths["heatmap"], x=55, y=125, w=95)
 
     section_title(pdf, "AI Insights")
+    clean_ai = re.sub(r"[^\x00-\x7F]+", " ", ai_text if ai_text else "No AI insights were provided for this dataset.")
+    body(pdf, clean_ai, font_size=10)
 
-    clean_ai = re.sub(
-        r"[^\x00-\x7F]+",
-        " ",
-        ai_text if ai_text else "No AI Insights Available."
-    )
+    output_path = os.path.join(tempfile.gettempdir(), "DataLens_Report.pdf")
+    pdf.output(output_path)
+    return output_path
 
-    body(pdf, clean_ai)
-
-    # ------------------------------------------------------
-
-    section_title(pdf, "Recommendations")
-
-    recommendations = []
 
     if missing > 0:
 
