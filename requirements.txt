@@ -8,6 +8,6 @@ seaborn
 scikit-learn
 joblib
 
-fpdf
+fpdf2
 python-dotenv
 openai

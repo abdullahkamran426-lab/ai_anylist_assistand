@@ -16,7 +16,7 @@ def render_prediction_page():
     st.success(f"Dataset loaded: {df.shape[0]} rows × {df.shape[1]} columns")
 
     target = st.selectbox("Select target column", df.columns, key="prediction_target")
-    if st.button("🚀 Train model", use_container_width=True):
+    if st.button("Train model", type="primary"):
         with st.spinner("Training and comparing models..."):
             result = train_models(df, target)
         st.session_state["prediction_result"] = result
@@ -45,10 +45,10 @@ def render_prediction_page():
         st.markdown("### 📈 Cross-validation scores")
         st.write(result["cross_val_scores"])
 
-    if st.button("💾 Save trained model", use_container_width=True):
+    if st.button("Save trained model"):
         path = save_model(result["best_model"], filename="trained_model.pkl")
         with open(path, "rb") as fh:
-            st.download_button("⬇ Download model", fh, file_name="trained_model.pkl", mime="application/octet-stream", use_container_width=True)
+            st.download_button("Download model", fh, file_name="trained_model.pkl", mime="application/octet-stream")
 
     st.markdown("---")
     st.subheader("📝 Make a prediction")
@@ -61,7 +61,7 @@ def render_prediction_page():
             options = sorted([value for value in X[col].dropna().unique().tolist() if pd.notna(value)])
             user_data[col] = st.selectbox(col, options, key=f"pred_select_{col}")
 
-    if st.button("🔮 Predict", use_container_width=True):
+    if st.button("Predict"):
         input_df = pd.DataFrame([user_data])
         prediction = predict(result["best_model"], input_df)[0]
         st.success(f"Prediction: {prediction}")

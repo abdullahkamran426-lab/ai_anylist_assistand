@@ -57,6 +57,133 @@ from sklearn.ensemble import (
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 
 
+def clean_pdf_text(text):
+    """
+    Convert Unicode text into Latin-1 safe text for FPDF.
+    
+    This function handles all Unicode characters by:
+    1. Converting to string if None
+    2. Replacing common Unicode symbols with ASCII equivalents
+    3. Removing any remaining non-Latin-1 characters
+    4. Ensuring the result is always a valid Latin-1 string
+    """
+    if text is None:
+        return ""
+
+    text = str(text)
+
+    # Comprehensive Unicode to ASCII replacements
+    replacements = {
+        # Bullets and dashes
+        "•": "-",
+        "–": "-",
+        "—": "-",
+        "−": "-",
+        "‐": "-",
+        "‑": "-",
+        
+        # Smart quotes
+        """: '"',
+        """: '"',
+        "'": "'",
+        "'": "'",
+        "`": "'",
+        "´": "'",
+        
+        # Checkmarks and crosses
+        "✓": "[OK]",
+        "✔": "[OK]",
+        "✕": "[X]",
+        "✖": "[X]",
+        "✘": "[X]",
+        
+        # Arrows
+        "→": "->",
+        "←": "<-",
+        "↑": "^",
+        "↓": "v",
+        "↔": "<->",
+        "⇒": "=>",
+        "⇐": "<=",
+        
+        # Mathematical symbols
+        "°": " deg",
+        "±": "+/-",
+        "×": "x",
+        "÷": "/",
+        "≈": "~",
+        "≠": "!=",
+        "≤": "<=",
+        "≥": ">=",
+        "∞": "inf",
+        "√": "sqrt",
+        
+        # Currency symbols
+        "€": "EUR",
+        "£": "GBP",
+        "¥": "JPY",
+        "₹": "INR",
+        "₽": "RUB",
+        
+        # Common symbols
+        "©": "(c)",
+        "®": "(r)",
+        "™": "(tm)",
+        "§": "section",
+        "¶": "paragraph",
+        
+        # Emojis and pictographs (common ones)
+        "📊": "[Chart]",
+        "📈": "[Graph]",
+        "📉": "[Graph]",
+        "📄": "[Doc]",
+        "🚀": "[Launch]",
+        "💾": "[Save]",
+        "🔮": "[Predict]",
+        "⬇": "[Download]",
+        "✨": "[Star]",
+        "⚡": "[Fast]",
+        "🤖": "[AI]",
+        "🔬": "[Lab]",
+        "🏠": "[Home]",
+        "📂": "[Folder]",
+        "🧹": "[Clean]",
+        "🔍": "[Search]",
+        "ℹ️": "[Info]",
+        
+        # Other common Unicode
+        "…": "...",
+        "—": "-",
+        "–": "-",
+        "«": "<<",
+        "»": ">>",
+        "‹": "<",
+        "›": ">",
+        "‛": "'",
+        "‚": ",",
+        "„": '"',
+        "‟": '"',
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    # Remove any remaining non-Latin-1 characters
+    try:
+        # Try to encode as Latin-1, ignoring characters that can't be encoded
+        cleaned = text.encode("latin-1", "ignore").decode("latin-1")
+        return cleaned
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        # If that fails, use a more aggressive approach
+        try:
+            # Replace any non-ASCII characters with their closest ASCII equivalent
+            cleaned = text.encode("ascii", "ignore").decode("ascii")
+            return cleaned
+        except Exception:
+            # Last resort: return empty string
+            return ""
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Report brand colors (RGB tuples — fpdf2's set_fill_color/set_text_color
 # both accept *color unpacked like this). Kept as module constants so the
@@ -275,7 +402,7 @@ class ReportPDF(FPDF):
         self.set_fill_color(*PRIMARY)
         self.set_text_color(255, 255, 255)
         self.set_font("Arial", "B", 16)
-        self.cell(0, 12, "DataLens AI Report", ln=True, align="C", fill=True)
+        self.cell(0, 12, clean_pdf_text("DataLens AI Report"), ln=True, align="C", fill=True)
         self.ln(2)
         self.set_text_color(0, 0, 0)
 
@@ -283,7 +410,7 @@ class ReportPDF(FPDF):
         self.set_y(-15)
         self.set_font("Arial", "I", 8)
         self.set_text_color(120, 120, 120)
-        self.cell(0, 10, f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}  •  Page {self.page_no()}", align="C")
+        self.cell(0, 10, clean_pdf_text(f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}  -  Page {self.page_no()}"), align="C")
 
 
 def _section_title(pdf, title, subtitle=None):
@@ -291,12 +418,12 @@ def _section_title(pdf, title, subtitle=None):
     pdf.set_fill_color(*PRIMARY)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, title, ln=True, fill=True)
+    pdf.cell(0, 8, clean_pdf_text(title), ln=True, fill=True)
     if subtitle:
         pdf.ln(1)
         pdf.set_font("Arial", "", 9)
         pdf.set_text_color(90, 90, 90)
-        pdf.multi_cell(0, 5, subtitle)
+        pdf.multi_cell(0, 5, clean_pdf_text(subtitle))
     pdf.ln(2)
     pdf.set_text_color(0, 0, 0)
 
@@ -304,7 +431,7 @@ def _section_title(pdf, title, subtitle=None):
 def _body(pdf, text):
     """Plain wrapped paragraph text."""
     pdf.set_font("Arial", "", 10)
-    pdf.multi_cell(0, 5, text)
+    pdf.multi_cell(0, 5, clean_pdf_text(text))
     pdf.ln(2)
 
 
@@ -315,10 +442,10 @@ def _add_kpi_card(pdf, title, value, color, x, y, w=45, h=20):
     pdf.set_xy(x + 3, y + 3)
     pdf.set_font("Arial", "B", 8)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(w - 6, 4, title, ln=True)
+    pdf.cell(w - 6, 4, clean_pdf_text(title), ln=True)
     pdf.set_xy(x + 3, y + 10)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(w - 6, 6, str(value), ln=True)
+    pdf.cell(w - 6, 6, clean_pdf_text(str(value)), ln=True)
     pdf.set_text_color(0, 0, 0)
 
 
@@ -461,13 +588,13 @@ def add_statistics(pdf, df):
         pdf.set_fill_color(*PRIMARY)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Arial", "B", 10)
-        pdf.cell(0, 8, column, ln=True, fill=True)
+        pdf.cell(0, 8, clean_pdf_text(column), ln=True, fill=True)
 
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", "", 9)
         for idx in stats.index:
-            pdf.cell(40, 7, str(idx), border=1)
-            pdf.cell(40, 7, str(stats.loc[idx, column]), border=1, ln=True)
+            pdf.cell(40, 7, clean_pdf_text(str(idx)), border=1)
+            pdf.cell(40, 7, clean_pdf_text(str(stats.loc[idx, column])), border=1, ln=True)
         pdf.ln(4)
 
 
@@ -479,7 +606,7 @@ def add_ai_insights(pdf, ai_text):
     clean_text = re.sub(r"[^\x00-\x7F]+", " ", ai_text or "No AI insights were generated for this dataset.")
     pdf.set_font("Arial", "", 10)
     pdf.set_fill_color(*LIGHT)
-    pdf.multi_cell(0, 8, clean_text[:1200], border=1, fill=True)
+    pdf.multi_cell(0, 8, clean_pdf_text(clean_text[:1200]), border=1, fill=True)
     pdf.ln(4)
 
 
@@ -506,7 +633,7 @@ def add_recommendations(pdf, df):
 
     pdf.set_font("Arial", "", 10)
     for rec in recommendations:
-        pdf.multi_cell(0, 7, f"•  {rec}")
+        pdf.multi_cell(0, 7, f"-  {rec}")
     pdf.ln(3)
 
 
@@ -519,7 +646,7 @@ def add_summary(pdf, df):
     pdf.set_fill_color(*PRIMARY)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 12, f"Overall Dataset Quality: {score}/100", ln=True, fill=True)
+    pdf.cell(0, 12, clean_pdf_text(f"Overall Dataset Quality: {score}/100"), ln=True, fill=True)
     pdf.set_text_color(0, 0, 0)
     pdf.ln(3)
 
@@ -531,7 +658,7 @@ def add_summary(pdf, df):
         verdict = "Needs work — address missing values and duplicates before deeper analysis."
 
     pdf.set_font("Arial", "", 11)
-    pdf.multi_cell(0, 8, verdict)
+    pdf.multi_cell(0, 8, clean_pdf_text(verdict))
 
 
 def export_dataset_report(df, ai_text=""):
@@ -543,130 +670,178 @@ def export_dataset_report(df, ai_text=""):
     Auto page-breaking (`_ensure_space` + fpdf2's own `set_auto_page_break`)
     is used throughout instead of hardcoded (x, y) image coordinates, so
     sections never overlap regardless of how much text precedes them.
+    
+    This function includes comprehensive error handling to prevent crashes
+    and provide user-friendly error messages.
     """
-    pdf = ReportPDF()
-    pdf.set_auto_page_break(True, margin=15)
-
+    # Validate inputs
+    if df is None:
+        raise ValueError("No dataset provided for report generation")
+    
+    if df.empty:
+        raise ValueError("Dataset is empty - cannot generate report")
+    
+    # Ensure ai_text is a string
+    if ai_text is None:
+        ai_text = ""
+    
+    pdf = None
+    output_path = None
+    
     try:
-        filename = st.session_state.get("filename", "Dataset")
-    except Exception:
-        filename = "Dataset"
+        pdf = ReportPDF()
+        pdf.set_auto_page_break(True, margin=15)
 
-    score = calculate_quality_score(df)
-    missing_total = int(df.isna().sum().sum())
-    duplicate_total = int(df.duplicated().sum())
-    missing_df = get_missing_summary(df)
-    numeric = df.select_dtypes(include=np.number)
-    quality_subtitle = f"{df.shape[0]:,} rows • {df.shape[1]} columns • {score}/100 quality score"
+        try:
+            filename = st.session_state.get("filename", "Dataset")
+        except Exception:
+            filename = "Dataset"
 
-    # ── Page 1: cover band + overview + KPI cards + dataset info ──
-    pdf.add_page()
-    pdf.set_fill_color(*PRIMARY)
-    pdf.rect(0, 0, 210, 55, style="F")
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_xy(15, 15)
-    pdf.set_font("Arial", "B", 22)
-    pdf.cell(0, 10, "DataLens AI Report")
-    pdf.set_xy(15, 30)
-    pdf.set_font("Arial", "", 11)
-    pdf.cell(0, 8, "Professional dataset analysis with AI-ready insights")
-    pdf.set_xy(15, 43)
-    pdf.set_font("Arial", "", 10)
-    pdf.cell(0, 6, f"Dataset: {filename}")
-    pdf.set_text_color(0, 0, 0)
+        score = calculate_quality_score(df)
+        missing_total = int(df.isna().sum().sum())
+        duplicate_total = int(df.duplicated().sum())
+        missing_df = get_missing_summary(df)
+        numeric = df.select_dtypes(include=np.number)
+        quality_subtitle = f"{df.shape[0]:,} rows - {df.shape[1]} columns - {score}/100 quality score"
 
-    pdf.set_xy(15, 65)
-    _section_title(pdf, "Dataset Overview", quality_subtitle)
-    _body(pdf, f"The uploaded dataset contains {df.shape[0]:,} rows and {df.shape[1]} columns. "
-                f"The quality score is {score}/100, with {missing_total} missing values and "
-                f"{duplicate_total} duplicate rows.")
-
-    kpi_y = pdf.get_y() + 4
-    _add_kpi_card(pdf, "Rows", f"{df.shape[0]:,}", PRIMARY, 15, kpi_y, 40, 24)
-    _add_kpi_card(pdf, "Columns", df.shape[1], SUCCESS, 60, kpi_y, 40, 24)
-    _add_kpi_card(pdf, "Quality", f"{score}%", WARNING, 105, kpi_y, 40, 24)
-    _add_kpi_card(pdf, "Missing", missing_total, DANGER, 150, kpi_y, 40, 24)
-    pdf.set_y(kpi_y + 30)
-
-    _section_title(pdf, "Dataset Information")
-    info_rows = [
-        ("Rows", df.shape[0]),
-        ("Columns", df.shape[1]),
-        ("Memory usage", f"{round(df.memory_usage(deep=True).sum() / 1024, 2)} KB"),
-        ("Duplicate rows", duplicate_total),
-        ("Missing cells", missing_total),
-    ]
-    pdf.set_font("Arial", "", 10)
-    for key, value in info_rows:
-        pdf.cell(60, 7, str(key), border=1)
-        pdf.cell(100, 7, str(value), border=1, ln=True)
-
-    # ── Page 2+: missing values → statistics → correlation → charts ──
-    pdf.add_page()
-    _section_title(pdf, "Missing Values Analysis", "Columns most affected by nulls")
-    if not missing_df.empty:
-        pdf.set_font("Arial", "", 9)
-        for name, row in missing_df.head(8).iterrows():
-            pdf.cell(80, 6, str(name), border=1)
-            pdf.cell(30, 6, str(int(row["missing_count"])), border=1)
-            pdf.cell(25, 6, f"{row['share']}%", border=1, ln=True)
-        pdf.ln(3)
-        missing_chart = create_missing_chart(df)
-        if missing_chart:
-            _ensure_space(pdf, 90)
-            pdf.image(missing_chart, w=140)
-            pdf.ln(4)
-    else:
-        _body(pdf, "No missing values were found in this dataset.")
-
-    # Statistical summary — delegated to the (previously unused) helper.
-    add_statistics(pdf, df)
-
-    # Correlation analysis
-    _ensure_space(pdf, 30)
-    corr_pairs = get_correlation_insights(df)
-    _section_title(pdf, "Correlation Analysis")
-    if corr_pairs:
+        # ── Page 1: cover band + overview + KPI cards + dataset info ──
+        pdf.add_page()
+        pdf.set_fill_color(*PRIMARY)
+        pdf.rect(0, 0, 210, 55, style="F")
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_xy(15, 15)
+        pdf.set_font("Arial", "B", 22)
+        pdf.cell(0, 10, clean_pdf_text("DataLens AI Report"))
+        pdf.set_xy(15, 30)
+        pdf.set_font("Arial", "", 11)
+        pdf.cell(0, 8, clean_pdf_text("Professional dataset analysis with AI-ready insights"))
+        pdf.set_xy(15, 43)
         pdf.set_font("Arial", "", 10)
-        for a, b, value in corr_pairs[:8]:
-            pdf.cell(0, 6, f"•  {a} and {b} show a strong correlation ({value})", ln=True)
-        pdf.ln(2)
-    else:
-        _body(pdf, "No strong numeric correlations (|r| >= 0.7) were detected in this dataset.")
+        pdf.cell(0, 6, clean_pdf_text(f"Dataset: {filename}"))
+        pdf.set_text_color(0, 0, 0)
 
-    # Histogram, pie chart, heatmap — each guarded by _ensure_space so a
-    # chart is never split across a page boundary.
-    hist_path = create_histogram(df)
-    if hist_path:
-        _ensure_space(pdf, 95)
-        _section_title(pdf, "Histogram")
-        pdf.image(hist_path, w=150)
-        pdf.ln(4)
+        pdf.set_xy(15, 65)
+        _section_title(pdf, "Dataset Overview", quality_subtitle)
+        _body(pdf, f"The uploaded dataset contains {df.shape[0]:,} rows and {df.shape[1]} columns. "
+                    f"The quality score is {score}/100, with {missing_total} missing values and "
+                    f"{duplicate_total} duplicate rows.")
 
-    pie_path = create_pie_chart(df)
-    if pie_path:
-        _ensure_space(pdf, 100)
-        _section_title(pdf, "Pie Chart")
-        pdf.image(pie_path, w=120)
-        pdf.ln(4)
+        kpi_y = pdf.get_y() + 4
+        _add_kpi_card(pdf, "Rows", f"{df.shape[0]:,}", PRIMARY, 15, kpi_y, 40, 24)
+        _add_kpi_card(pdf, "Columns", df.shape[1], SUCCESS, 60, kpi_y, 40, 24)
+        _add_kpi_card(pdf, "Quality", f"{score}%", WARNING, 105, kpi_y, 40, 24)
+        _add_kpi_card(pdf, "Missing", missing_total, DANGER, 150, kpi_y, 40, 24)
+        pdf.set_y(kpi_y + 30)
 
-    heatmap_path = create_heatmap(df)
-    if heatmap_path:
-        _ensure_space(pdf, 100)
-        _section_title(pdf, "Correlation Heatmap")
-        pdf.image(heatmap_path, w=150)
-        pdf.ln(4)
+        _section_title(pdf, "Dataset Information")
+        info_rows = [
+            ("Rows", df.shape[0]),
+            ("Columns", df.shape[1]),
+            ("Memory usage", f"{round(df.memory_usage(deep=True).sum() / 1024, 2)} KB"),
+            ("Duplicate rows", duplicate_total),
+            ("Missing cells", missing_total),
+        ]
+        pdf.set_font("Arial", "", 10)
+        for key, value in info_rows:
+            pdf.cell(60, 7, clean_pdf_text(str(key)), border=1)
+            pdf.cell(100, 7, clean_pdf_text(str(value)), border=1, ln=True)
 
-    # AI insights, recommendations, and the closing quality-score verdict —
-    # each of these was previously a dead/unused function; now wired in.
-    add_ai_insights(pdf, ai_text)
-    add_recommendations(pdf, df)
-    add_summary(pdf, df)
+        # ── Page 2+: missing values → statistics → correlation → charts ──
+        pdf.add_page()
+        _section_title(pdf, "Missing Values Analysis", "Columns most affected by nulls")
+        if not missing_df.empty:
+            pdf.set_font("Arial", "", 9)
+            for name, row in missing_df.head(8).iterrows():
+                pdf.cell(80, 6, clean_pdf_text(str(name)), border=1)
+                pdf.cell(30, 6, clean_pdf_text(str(int(row["missing_count"]))), border=1)
+                pdf.cell(25, 6, clean_pdf_text(f"{row['share']}%"), border=1, ln=True)
+            pdf.ln(3)
+            missing_chart = create_missing_chart(df)
+            if missing_chart:
+                _ensure_space(pdf, 90)
+                pdf.image(missing_chart, w=140)
+                pdf.ln(4)
+        else:
+            _body(pdf, "No missing values were found in this dataset.")
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        output_path = tmp.name
-    pdf.output(output_path)
-    return output_path
+        # Statistical summary — delegated to the (previously unused) helper.
+        add_statistics(pdf, df)
+
+        # Correlation analysis
+        _ensure_space(pdf, 30)
+        corr_pairs = get_correlation_insights(df)
+        _section_title(pdf, "Correlation Analysis")
+        if corr_pairs:
+            pdf.set_font("Arial", "", 10)
+            for a, b, value in corr_pairs[:8]:
+                pdf.cell(0, 6, clean_pdf_text(f"-  {a} and {b} show a strong correlation ({value})"), ln=True)
+            pdf.ln(2)
+        else:
+            _body(pdf, "No strong numeric correlations (|r| >= 0.7) were detected in this dataset.")
+
+        # Histogram, pie chart, heatmap — each guarded by _ensure_space so a
+        # chart is never split across a page boundary.
+        hist_path = create_histogram(df)
+        if hist_path:
+            _ensure_space(pdf, 95)
+            _section_title(pdf, "Histogram")
+            pdf.image(hist_path, w=150)
+            pdf.ln(4)
+
+        pie_path = create_pie_chart(df)
+        if pie_path:
+            _ensure_space(pdf, 100)
+            _section_title(pdf, "Pie Chart")
+            pdf.image(pie_path, w=120)
+            pdf.ln(4)
+
+        heatmap_path = create_heatmap(df)
+        if heatmap_path:
+            _ensure_space(pdf, 100)
+            _section_title(pdf, "Correlation Heatmap")
+            pdf.image(heatmap_path, w=150)
+            pdf.ln(4)
+
+        # AI insights, recommendations, and the closing quality-score verdict —
+        # each of these was previously a dead/unused function; now wired in.
+        add_ai_insights(pdf, ai_text)
+        add_recommendations(pdf, df)
+        add_summary(pdf, df)
+
+        # Create temporary file with proper error handling
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            output_path = tmp.name
+        
+        # Output PDF with error handling
+        try:
+            pdf.output(output_path)
+        except Exception as e:
+            # Clean up the temporary file if output fails
+            if output_path and os.path.exists(output_path):
+                try:
+                    os.unlink(output_path)
+                except Exception:
+                    pass
+            raise RuntimeError(f"Failed to write PDF file: {str(e)}")
+        
+        # Verify the file was created successfully
+        if not os.path.exists(output_path):
+            raise RuntimeError("PDF file was not created")
+        
+        if os.path.getsize(output_path) == 0:
+            os.unlink(output_path)
+            raise RuntimeError("PDF file is empty")
+        
+        return output_path
+        
+    except Exception as e:
+        # Clean up temporary file if any error occurs
+        if output_path and os.path.exists(output_path):
+            try:
+                os.unlink(output_path)
+            except Exception:
+                pass
+        raise RuntimeError(f"PDF generation failed: {str(e)}")
 
 
 def export_to_pdf(ai_text=""):
