@@ -32,9 +32,6 @@ def render_prediction_page():
         st.error("Invalid prediction result format. Please retrain the model.")
         return
     
-    # Debug: log the result structure
-    st.write("Debug: Result keys:", list(result.keys()) if isinstance(result, dict) else "Not a dict")
-    
     st.markdown("### 🏆 Best model")
     st.info(f"{result.get('best_model_name', 'Unknown')} • Problem type: {result.get('problem', 'Unknown')}")
 

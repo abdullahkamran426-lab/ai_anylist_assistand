@@ -171,5 +171,5 @@ def forecast_series(series: pd.Series, periods: int = 6):
     for _ in range(periods):
         last_value = values.iloc[-1] + trend
         forecast.append(last_value)
-        values = values._append(pd.Series([last_value]))
+        values = pd.concat([values, pd.Series([last_value])], ignore_index=True)
     return pd.Series(forecast, index=range(1, periods + 1))
