@@ -14,7 +14,7 @@ import streamlit as st
 # IMPORT MODULES
 # Import all UI components and helper modules
 # ============================================================================
-from modules.styles import inject_css
+from modules.styles._init_ import inject_css
 from modules.session import initialize_session_state
 from modules.sidebar import render_sidebar
 from modules.pages import (
