@@ -503,7 +503,10 @@ class ReportPDF(FPDF):
         self.set_y(-15)
         self.set_font("Arial", "I", 8)
         self.set_text_color(120, 120, 120)
-        self.cell(0, 10, clean_pdf_text(f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}  -  Page {self.page_no()}"), align="C")
+        footer_text = clean_pdf_text(f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')} - Page {self.page_no()}")
+        if len(footer_text) > 60:
+            footer_text = footer_text[:57] + "..."
+        self.cell(0, 10, footer_text, align="C")
 
 
 def _section_title(pdf, title, subtitle=None):
@@ -511,12 +514,18 @@ def _section_title(pdf, title, subtitle=None):
     pdf.set_fill_color(*PRIMARY)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, clean_pdf_text(title), ln=True, fill=True)
+    title_text = clean_pdf_text(title)
+    if len(title_text) > 60:
+        title_text = title_text[:57] + "..."
+    pdf.cell(0, 8, title_text, ln=True, fill=True)
     if subtitle:
         pdf.ln(1)
         pdf.set_font("Arial", "", 9)
         pdf.set_text_color(90, 90, 90)
-        pdf.multi_cell(0, 5, clean_pdf_text(subtitle))
+        sub_text = clean_pdf_text(subtitle)
+        if len(sub_text) > 80:
+            sub_text = sub_text[:77] + "..."
+        pdf.multi_cell(0, 5, sub_text)
     pdf.ln(2)
     pdf.set_text_color(0, 0, 0)
 
@@ -524,7 +533,10 @@ def _section_title(pdf, title, subtitle=None):
 def _body(pdf, text):
     """Plain wrapped paragraph text."""
     pdf.set_font("Arial", "", 10)
-    pdf.multi_cell(0, 5, clean_pdf_text(text))
+    body_text = clean_pdf_text(text)
+    if len(body_text) > 500:
+        body_text = body_text[:497] + "..."
+    pdf.multi_cell(0, 5, body_text)
     pdf.ln(2)
 
 
@@ -535,10 +547,16 @@ def _add_kpi_card(pdf, title, value, color, x, y, w=45, h=20):
     pdf.set_xy(x + 3, y + 3)
     pdf.set_font("Arial", "B", 8)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(w - 6, 4, clean_pdf_text(title), ln=True)
+    title_text = clean_pdf_text(title)
+    if len(title_text) > 10:
+        title_text = title_text[:8] + ".."
+    pdf.cell(w - 6, 4, title_text, ln=True)
     pdf.set_xy(x + 3, y + 10)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(w - 6, 6, clean_pdf_text(str(value)), ln=True)
+    val_text = clean_pdf_text(str(value))
+    if len(val_text) > 8:
+        val_text = val_text[:6] + ".."
+    pdf.cell(w - 6, 6, val_text, ln=True)
     pdf.set_text_color(0, 0, 0)
 
 
@@ -686,8 +704,15 @@ def add_statistics(pdf, df):
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", "", 9)
         for idx in stats.index:
-            pdf.cell(40, 7, clean_pdf_text(str(idx)), border=1)
-            pdf.cell(40, 7, clean_pdf_text(str(stats.loc[idx, column])), border=1, ln=True)
+            idx_text = clean_pdf_text(str(idx))
+            val_text = clean_pdf_text(str(stats.loc[idx, column]))
+            # Truncate if too long for cell
+            if len(idx_text) > 25:
+                idx_text = idx_text[:22] + "..."
+            if len(val_text) > 25:
+                val_text = val_text[:22] + "..."
+            pdf.cell(50, 7, idx_text, border=1)
+            pdf.cell(50, 7, val_text, border=1, ln=True)
         pdf.ln(4)
 
 
@@ -810,7 +835,10 @@ def export_dataset_report(df, ai_text=""):
         pdf.cell(0, 8, clean_pdf_text("Professional dataset analysis with AI-ready insights"))
         pdf.set_xy(15, 43)
         pdf.set_font("Arial", "", 10)
-        pdf.cell(0, 6, clean_pdf_text(f"Dataset: {filename}"))
+        filename_text = clean_pdf_text(f"Dataset: {filename}")
+        if len(filename_text) > 50:
+            filename_text = filename_text[:47] + "..."
+        pdf.cell(0, 6, filename_text)
         pdf.set_text_color(0, 0, 0)
 
         pdf.set_xy(15, 65)
@@ -836,8 +864,14 @@ def export_dataset_report(df, ai_text=""):
         ]
         pdf.set_font("Arial", "", 10)
         for key, value in info_rows:
-            pdf.cell(60, 7, clean_pdf_text(str(key)), border=1)
-            pdf.cell(100, 7, clean_pdf_text(str(value)), border=1, ln=True)
+            key_text = clean_pdf_text(str(key))
+            val_text = clean_pdf_text(str(value))
+            if len(key_text) > 25:
+                key_text = key_text[:22] + "..."
+            if len(val_text) > 40:
+                val_text = val_text[:37] + "..."
+            pdf.cell(60, 7, key_text, border=1)
+            pdf.cell(100, 7, val_text, border=1, ln=True)
 
         # ── Page 2+: missing values → statistics → correlation → charts ──
         pdf.add_page()
@@ -845,7 +879,10 @@ def export_dataset_report(df, ai_text=""):
         if not missing_df.empty:
             pdf.set_font("Arial", "", 9)
             for name, row in missing_df.head(8).iterrows():
-                pdf.cell(80, 6, clean_pdf_text(str(name)), border=1)
+                name_text = clean_pdf_text(str(name))
+                if len(name_text) > 35:
+                    name_text = name_text[:32] + "..."
+                pdf.cell(80, 6, name_text, border=1)
                 pdf.cell(30, 6, clean_pdf_text(str(int(row["missing_count"]))), border=1)
                 pdf.cell(25, 6, clean_pdf_text(f"{row['share']}%"), border=1, ln=True)
             pdf.ln(3)
@@ -867,7 +904,10 @@ def export_dataset_report(df, ai_text=""):
         if corr_pairs:
             pdf.set_font("Arial", "", 10)
             for a, b, value in corr_pairs[:8]:
-                pdf.cell(0, 6, clean_pdf_text(f"-  {a} and {b} show a strong correlation ({value})"), ln=True)
+                corr_text = clean_pdf_text(f"-  {a} and {b} show a strong correlation ({value})")
+                if len(corr_text) > 80:
+                    corr_text = corr_text[:77] + "..."
+                pdf.cell(0, 6, corr_text, ln=True)
             pdf.ln(2)
         else:
             _body(pdf, "No strong numeric correlations (|r| >= 0.7) were detected in this dataset.")
