@@ -46,7 +46,7 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.ensemble import (
     GradientBoostingClassifier,
@@ -272,6 +272,99 @@ def clean_data(df):
                 continue
 
     return cleaned.drop_duplicates().reset_index(drop=True)
+
+
+def apply_one_hot_encoding(df, columns=None, drop_first=False):
+    """Apply one-hot encoding to specified categorical columns.
+    
+    Args:
+        df: Input DataFrame
+        columns: List of column names to encode. If None, encodes all object dtype columns.
+        drop_first: If True, drops the first category to avoid multicollinearity (useful for regression)
+    
+    Returns:
+        DataFrame with one-hot encoded columns
+    """
+    encoded_df = df.copy()
+    
+    if columns is None:
+        columns = encoded_df.select_dtypes(include=['object']).columns.tolist()
+    
+    for column in columns:
+        if column in encoded_df.columns:
+            # Get dummies with optional drop_first
+            dummies = pd.get_dummies(encoded_df[column], prefix=column, drop_first=drop_first, dtype=int)
+            encoded_df = pd.concat([encoded_df.drop(column, axis=1), dummies], axis=1)
+    
+    return encoded_df
+
+
+def apply_label_encoding(df, columns=None):
+    """Apply label encoding to specified categorical columns.
+    
+    Args:
+        df: Input DataFrame
+        columns: List of column names to encode. If None, encodes all object dtype columns.
+    
+    Returns:
+        DataFrame with label encoded columns and a dictionary of encoders for each column
+    """
+    encoded_df = df.copy()
+    encoders = {}
+    
+    if columns is None:
+        columns = encoded_df.select_dtypes(include=['object']).columns.tolist()
+    
+    for column in columns:
+        if column in encoded_df.columns:
+            le = LabelEncoder()
+            # Handle NaN values by converting to string first
+            encoded_df[column] = encoded_df[column].astype(str)
+            encoded_df[column] = le.fit_transform(encoded_df[column])
+            encoders[column] = le
+    
+    return encoded_df, encoders
+
+
+def get_encoding_recommendations(df):
+    """Analyze categorical columns and recommend encoding strategy.
+    
+    Args:
+        df: Input DataFrame
+    
+    Returns:
+        Dictionary with encoding recommendations for each categorical column
+    """
+    categorical = df.select_dtypes(include=['object'])
+    recommendations = {}
+    
+    for column in categorical.columns:
+        unique_count = df[column].nunique()
+        total_count = len(df)
+        cardinality_ratio = unique_count / total_count
+        
+        if unique_count <= 2:
+            recommendation = "Label Encoding (binary)"
+            reason = "Binary column - label encoding is most efficient"
+        elif unique_count <= 10:
+            recommendation = "One-Hot Encoding"
+            reason = "Low cardinality - one-hot encoding preserves all information"
+        elif cardinality_ratio < 0.05:
+            recommendation = "One-Hot Encoding"
+            reason = "Low cardinality ratio - one-hot encoding is manageable"
+        else:
+            recommendation = "Label Encoding or Target Encoding"
+            reason = "High cardinality - label encoding reduces dimensionality"
+        
+        recommendations[column] = {
+            "unique_values": unique_count,
+            "total_rows": total_count,
+            "cardinality_ratio": round(cardinality_ratio, 4),
+            "recommended_encoding": recommendation,
+            "reason": reason
+        }
+    
+    return recommendations
 
 
 # ══════════════════════════════════════════════════════════════════════════════
