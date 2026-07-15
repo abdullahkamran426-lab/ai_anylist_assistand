@@ -26,13 +26,20 @@ def render_prediction_page():
         return
 
     result = st.session_state["prediction_result"]
+    
+    # Validate result is a dictionary
+    if not isinstance(result, dict):
+        st.error("Invalid prediction result format. Please retrain the model.")
+        return
+    
     st.markdown("### 🏆 Best model")
-    st.info(f"{result['best_model_name']} • Problem type: {result['problem']}")
+    st.info(f"{result.get('best_model_name', 'Unknown')} • Problem type: {result.get('problem', 'Unknown')}")
 
-    metrics = result["metrics"][result["best_model_name"]]
-    cols = st.columns(len(metrics))
-    for col, (name, value) in zip(cols, metrics.items()):
-        col.metric(name, f"{value:.4f}")
+    if "metrics" in result and result["best_model_name"] in result["metrics"]:
+        metrics = result["metrics"][result["best_model_name"]]
+        cols = st.columns(len(metrics))
+        for col, (name, value) in zip(cols, metrics.items()):
+            col.metric(name, f"{value:.4f}")
 
     if result.get("feature_importance") is not None:
         st.markdown("### 🔍 Feature importance")
@@ -71,12 +78,23 @@ def render_prediction_page():
         st.write(result["cross_val_scores"])
 
     if st.button("Save trained model"):
-        path = save_model(result["best_model"], filename="trained_model.pkl")
-        with open(path, "rb") as fh:
-            st.download_button("Download model", fh, file_name="trained_model.pkl", mime="application/octet-stream")
+        try:
+            if "best_model" in result:
+                path = save_model(result["best_model"], filename="trained_model.pkl")
+                with open(path, "rb") as fh:
+                    st.download_button("Download model", fh, file_name="trained_model.pkl", mime="application/octet-stream")
+            else:
+                st.error("No trained model found. Please retrain the model.")
+        except Exception as e:
+            st.error(f"Error saving model: {str(e)}")
 
     st.markdown("---")
     st.subheader("📝 Make a prediction")
+    
+    if "X" not in result:
+        st.error("Feature data not available. Please retrain the model.")
+        return
+        
     X = result["X"]
     user_data = {}
     for col in X.columns:
@@ -87,9 +105,15 @@ def render_prediction_page():
             user_data[col] = st.selectbox(col, options, key=f"pred_select_{col}")
 
     if st.button("Predict"):
-        input_df = pd.DataFrame([user_data])
-        prediction = predict(result["best_model"], input_df)[0]
-        st.success(f"Prediction: {prediction}")
+        try:
+            if "best_model" in result:
+                input_df = pd.DataFrame([user_data])
+                prediction = predict(result["best_model"], input_df)[0]
+                st.success(f"Prediction: {prediction}")
+            else:
+                st.error("No trained model found. Please retrain the model.")
+        except Exception as e:
+            st.error(f"Error making prediction: {str(e)}")
 
     st.markdown("---")
     st.subheader("📉 Forecast support")
