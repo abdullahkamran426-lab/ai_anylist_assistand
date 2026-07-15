@@ -22,6 +22,7 @@ call `inject_css()` once, right after st.set_page_config(), in main.py
 
 import streamlit as st
 
+# Import CSS modules using relative imports
 from .base import BASE_CSS
 from .sidebar import SIDEBAR_CSS
 from .widgets import WIDGETS_CSS
