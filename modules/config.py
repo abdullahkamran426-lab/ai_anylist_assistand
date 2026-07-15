@@ -6,12 +6,14 @@ App-wide Configuration Constants
 # ----------------------------------------------------------------------------
 # NAVIGATION
 # Master list of pages, in sidebar display order.
-#
-# IMPORTANT: modules/style/sidebar.py's CSS uses :nth-of-type(3), (4), (7),
-# and (9) to draw the PREPARE / EXPLORE / INSIGHTS / MORE section-group labels
+## IMPORTANT: modules/style/sidebar.py's CSS uses :nth-of-type(3), (4), (7),
+# and (10) to draw the PREPARE / EXPLORE / INSIGHTS / MORE section-group labels
 # above specific nav items. Those positions assume THIS exact order:
-#   3 = Clean Data (PREPARE), 4 = Dataset Preview (EXPLORE),
-#   7 = AI Assistant (INSIGHTS), 9 = About (MORE).
+#   3 = Clean Data (PREPARE)
+#   4 = Dataset Preview (EXPLORE)
+#   7 = AI Assistant (INSIGHTS)
+#   10 = About (MORE)
+# If you reorder this list, update those nth-of-type selectors to match.
 # If you reorder this list, update those nth-of-type selectors to match.
 # ----------------------------------------------------------------------------
 NAV_OPTIONS = [
@@ -22,6 +24,7 @@ NAV_OPTIONS = [
     "📊 Statistics",
     "📈 Visualizations",
     "🤖 AI Assistant",
+    "🔮 Prediction",
     "📄 Export Report",
     "ℹ️ About",
 ]
