@@ -11,6 +11,7 @@ then calls st.rerun() to redraw the page with the updated data.
 import pandas as pd
 import streamlit as st
 
+from modules.analysis import apply_one_hot_encoding, apply_label_encoding, get_encoding_recommendations
 from modules.utils import section
 
 
@@ -246,7 +247,51 @@ def render_clean_data_page():
         st.markdown("</div>", unsafe_allow_html=True)
 
         # --------------------------------------------------------------------
-        # 7. RESET & DOWNLOAD
+        # 7. ENCODING
+        # One-hot encoding and label encoding for categorical columns
+        # --------------------------------------------------------------------
+        st.markdown("<div class='clean-panel'><h4>Encoding</h4>", unsafe_allow_html=True)
+        cat_cols = df.select_dtypes(include=['object']).columns.tolist()
+        if not cat_cols:
+            st.markdown("<span class='pill pill-green'>No categorical columns</span>", unsafe_allow_html=True)
+        else:
+            # Show encoding recommendations
+            st.markdown("<small style='color:#94a3b8'>Encoding recommendations:</small>", unsafe_allow_html=True)
+            recommendations = get_encoding_recommendations(df)
+            for col, rec in recommendations.items():
+                st.markdown(f"<span class='pill pill-blue'>{col}: {rec['recommended_encoding']}</span>",
+                            unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            enc_col = st.multiselect("Select columns to encode", cat_cols, key="enc_cols")
+            enc_type = st.selectbox("Encoding type", ["One-Hot Encoding", "Label Encoding"], key="enc_type")
+            
+            if enc_type == "One-Hot Encoding":
+                drop_first = st.checkbox("Drop first category (avoid multicollinearity)", key="drop_first")
+            else:
+                drop_first = False
+            
+            if st.button("Apply encoding", key="apply_enc"):
+                if enc_col:
+                    try:
+                        if enc_type == "One-Hot Encoding":
+                            df = apply_one_hot_encoding(df, columns=enc_col, drop_first=drop_first)
+                            msg = f"Applied one-hot encoding to: {', '.join(enc_col)}"
+                        else:
+                            df, encoders = apply_label_encoding(df, columns=enc_col)
+                            msg = f"Applied label encoding to: {', '.join(enc_col)}"
+                        
+                        st.session_state.df = df
+                        st.session_state.clean_log.append(msg)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Encoding failed: {str(e)}")
+                else:
+                    st.warning("Please select at least one column to encode.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # --------------------------------------------------------------------
+        # 8. RESET & DOWNLOAD
         # Undo everything back to original, or download current state
         # --------------------------------------------------------------------
         st.markdown("<div class='div'></div>", unsafe_allow_html=True)
