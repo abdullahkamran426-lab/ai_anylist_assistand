@@ -7,7 +7,7 @@ st.markdown(..., unsafe_allow_html=True). This package used to be a single
 ~560-line styles.py; it's now split into one module per visual area so each
 piece is easier to find and edit:
 
-    styles/
+    modules/style/
         base.py      Fonts, CSS variable palette, base html/body rules
         sidebar.py   Sidebar navigation re-skin
         widgets.py   Generic Streamlit widget skins (buttons, dataframe, etc.)
@@ -16,7 +16,8 @@ piece is easier to find and edit:
         explore.py   Dataset Preview / Statistics / Visualizations styling
 
 The public API is unchanged from the original single-file styles.py:
-call `inject_css()` once, right after st.set_page_config(), in main.py.
+call `inject_css()` once, right after st.set_page_config(), in main.py
+(import as `from modules.style import inject_css`).
 """
 
 import streamlit as st
