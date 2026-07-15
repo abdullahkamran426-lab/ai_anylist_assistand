@@ -1,3 +1,40 @@
+"""
+AI Helper Module - Natural Language Q&A for Dataset Analysis
+==============================================================
+
+This module handles communication with OpenRouter API to provide AI-powered
+data analysis assistance. It allows users to ask natural language questions
+about their datasets and receive intelligent responses.
+
+Purpose:
+--------
+- Provides natural language interface for data analysis
+- Uses Llama 3.1 8B model via OpenRouter API for affordable AI responses
+- Integrates dataset context to provide relevant insights
+- Handles API errors gracefully with user-friendly messages
+
+Key Functions:
+--------------
+- ask_ai(question, dataset_summary): Main function that sends questions to AI
+  - Takes user question and dataset summary as input
+  - Returns AI-generated response or error message
+  - Uses system prompt to guide AI behavior as data analysis assistant
+
+Configuration:
+--------------
+- Requires OPENROUTER_API_KEY in .env file
+- Uses meta-llama/llama-3.1-8b-instruct model (affordable and capable)
+- 30 second timeout to prevent hanging
+- 500 token limit to control costs
+- Temperature 0.3 for focused, deterministic responses
+
+Error Handling:
+--------------
+- Returns "API Key missing" if no key is configured
+- Returns "AI Error: {message}" if API call fails
+- Gracefully handles network timeouts and API errors
+"""
+
 import os
 from dotenv import load_dotenv
 from openai import OpenAI

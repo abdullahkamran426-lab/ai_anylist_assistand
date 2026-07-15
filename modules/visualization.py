@@ -1,3 +1,61 @@
+"""
+Visualization Module - Plotly Chart Generation Functions
+========================================================
+
+This module contains functions to generate various types of interactive charts
+using Plotly Express and Plotly Graph Objects. These functions are used by the
+Visualizations page to display dataset insights.
+
+Purpose:
+--------
+- Provides reusable chart generation functions for the Visualizations page
+- Supports multiple chart types: bar, histogram, pie, scatter, box, violin, etc.
+- Uses Plotly for interactive, publication-quality charts
+- Handles edge cases (empty data, insufficient columns) gracefully
+
+Key Functions:
+--------------
+- plot_bar(df, col): Bar chart for categorical value counts
+- plot_histogram(df, col): Histogram for numeric distributions
+- plot_pie(df, col): Pie chart for categorical proportions
+- plot_scatter(df, x_col, y_col): Scatter plot with trendline
+- plot_box(df, col): Box plot for numeric distributions
+- plot_violin(df, col): Violin plot for numeric distributions
+- plot_line(df, x_col, y_col): Line chart for time series
+- plot_area(df, x_col, y_col): Area chart for cumulative data
+- plot_bubble(df, x_col, y_col, size_col): Bubble chart with size dimension
+- plot_treemap(df, path, values): Treemap for hierarchical data
+- plot_sunburst(df, path, values): Sunburst chart for hierarchical data
+- plot_correlation_matrix(df): Heatmap for correlation analysis
+
+Dependencies:
+-------------
+- pandas: Data manipulation
+- plotly.express: High-level chart creation
+- plotly.graph_objects: Low-level chart customization
+- statsmodels: Required for trendline in scatter plots (OLS regression)
+
+Chart Features:
+--------------
+- All charts return Plotly Figure objects
+- Charts are interactive (zoom, pan, hover tooltips)
+- Automatic color assignment for categorical data
+- Appropriate titles and axis labels
+- Limited to top 15/8 categories for bar/pie charts to avoid overcrowding
+
+Error Handling:
+--------------
+- plot_correlation_matrix returns empty Figure if insufficient numeric columns
+- Other functions assume valid input (validation happens in calling code)
+- Trendline in scatter requires statsmodels library
+
+Integration:
+------------
+- Used by modules/pages/visualizations.py
+- Charts are displayed using st.plotly_chart()
+- No deprecated width parameters (fixed in previous task)
+"""
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go

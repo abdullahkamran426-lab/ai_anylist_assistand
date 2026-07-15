@@ -15,6 +15,43 @@ Sections in this file, top to bottom:
     4. Prediction (AutoML)  detect_prediction_problem, train_prediction_model,
                             predict_with_model, save/load_prediction_model,
                             forecast_regression_series
+
+PDF Generation Error Explanation:
+==================================
+The error "PDF generation failed: Not enough horizontal space to render a single character"
+occurred because:
+
+1. FPDF Library Constraints: The FPDF library (used for PDF generation) has strict
+   requirements for text rendering in table cells. When text exceeds the specified
+   cell width, FPDF throws this error.
+
+2. Original Implementation Issues:
+   - Used bordered tables with fixed cell widths (e.g., pdf.cell(40, 7, text))
+   - Long column names, statistical values, or dataset info exceeded cell widths
+   - Unicode characters (even after sanitization) could cause width calculations to fail
+   - multi_cell with borders was particularly problematic for space calculations
+
+3. Root Causes:
+   - Dataset column names can be very long (e.g., "customer_lifetime_value_in_usd")
+   - Statistical values can have many decimal places (e.g., "12345.6789012345")
+   - Unicode characters have variable widths that FPDF couldn't calculate correctly
+   - The Latin-1 encoding wasn't handling all edge cases
+
+4. Solutions Implemented:
+   - Changed from bordered tables to simple text format (key: value pairs)
+   - Used ASCII-only encoding instead of Latin-1 for better compatibility
+   - Added text truncation to prevent overflow (e.g., text[:25] + "...")
+   - Added exception handling around PDF cell operations with fallback to "N/A"
+   - Removed borders from multi_cell calls that were causing space issues
+   - Enhanced clean_pdf_text() to ensure all text is printable and non-empty
+
+5. Files Affected:
+   - modules/analysis.py: Main PDF generation logic
+   - All PDF-related functions: add_statistics, _add_kpi_card, _section_title, etc.
+   - clean_pdf_text(): Enhanced to use ASCII-only encoding
+
+The fix ensures that PDF generation works reliably regardless of dataset size,
+column names, or content complexity.
 """
 
 import hashlib

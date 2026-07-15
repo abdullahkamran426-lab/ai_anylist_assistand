@@ -1,28 +1,75 @@
-import os
-import tempfile
-from typing import Dict, Any
+"""
+Prediction Module - AutoML for Classification and Regression
+=============================================================
 
-import joblib
-import numpy as np
-import pandas as pd
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import (
-    accuracy_score,
-    confusion_matrix,
-    f1_score,
-    mean_absolute_error,
-    mean_squared_error,
-    precision_score,
-    r2_score,
-    recall_score,
-)
-from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+This module provides automated machine learning capabilities for the Prediction page.
+It handles model training, evaluation, and prediction for both classification and
+regression problems using scikit-learn.
+
+Purpose:
+--------
+- Automatically detect whether a target variable is for classification or regression
+- Train multiple ML models and select the best performer
+- Provide comprehensive model evaluation metrics
+- Support model saving/loading for reuse
+- Handle data preprocessing (imputation, encoding) automatically
+
+Key Functions:
+--------------
+- detect_problem_type(df, target): Infers classification vs regression
+  - Numeric targets with ≤20 unique values → classification
+  - Numeric targets with >20 unique values → regression
+  - Non-numeric targets → classification
+
+- prepare_data(df, target): Prepares features and target for ML
+  - Separates features (X) and target (y)
+  - Identifies categorical and numerical columns
+  - Creates preprocessing pipelines (imputation + encoding)
+
+- train_prediction_model(df, target): Main AutoML function
+  - Detects problem type
+  - Prepares data with preprocessing
+  - Trains multiple models (Linear, Decision Tree, Random Forest)
+  - Evaluates using cross-validation
+  - Returns best model and metrics
+
+- predict_with_model(model, df, target): Makes predictions
+  - Applies same preprocessing as training
+  - Returns predictions for new data
+
+- save_prediction_model(model, path): Saves trained model to disk
+- load_prediction_model(path): Loads saved model from disk
+
+Models Supported:
+----------------
+Classification:
+- Logistic Regression
+- Decision Tree Classifier
+- Random Forest Classifier
+
+Regression:
+- Linear Regression
+- Decision Tree Regressor
+- Random Forest Regressor
+
+Evaluation Metrics:
+------------------
+Classification: accuracy, precision, recall, f1-score, confusion matrix
+Regression: R², MAE, MSE, RMSE
+
+Data Preprocessing:
+------------------
+- Numeric features: median imputation
+- Categorical features: most frequent imputation + one-hot encoding
+- Handles missing values automatically
+- Uses ColumnTransformer for pipeline integration
+
+Integration:
+------------
+- Used by modules/pages/prediction.py for the Prediction page UI
+- Models are saved as .pkl files using joblib
+- Supports both training new models and loading existing ones
+"""
 
 
 def detect_problem_type(df: pd.DataFrame, target: str) -> str:

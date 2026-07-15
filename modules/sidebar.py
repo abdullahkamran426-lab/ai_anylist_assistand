@@ -1,11 +1,52 @@
 """
-Sidebar Rendering
-This file handles the rendering of the application sidebar including:
-- Logo and branding
-- Navigation radio
-- Dataset status badge
-- Clear dataset button
-- Footer
+Sidebar Rendering Module - Application Navigation and Status
+=============================================================
+
+This file handles the rendering of the application sidebar, which is the primary
+navigation interface for DataLens. The sidebar provides access to all pages and
+displays dataset status information.
+
+Purpose:
+--------
+- Provides main navigation interface for the application
+- Displays dataset status (loaded/not loaded)
+- Shows dataset information when data is loaded
+- Allows users to clear/reset the dataset
+- Displays app branding and footer
+
+Key Functions:
+--------------
+- render_sidebar(): Main function that renders the complete sidebar
+  - Returns the selected page name for routing in main.py
+  - Displays logo, navigation, dataset status, and footer
+  - Handles dataset clearing functionality
+
+Components:
+-----------
+1. Logo and Branding: App logo with pulsing "AI Analysis" status indicator
+2. Navigation Radio: Radio buttons for all pages defined in NAV_OPTIONS
+3. Dataset Status Badge: Shows filename, row count, column count when data loaded
+4. Clear Dataset Button: Allows users to reset the app state
+5. Footer: App branding and version information
+
+Navigation:
+-----------
+The navigation uses radio buttons (st.radio) which provides a clean, single-selection
+interface. The selected page is returned and used in main.py for routing.
+
+Dataset Status:
+--------------
+When a dataset is loaded, the sidebar displays:
+- Filename of the uploaded CSV
+- Number of rows and columns
+- Quality score (calculated in analysis.py)
+- Clear dataset button to reset state
+
+Integration:
+------------
+- Uses NAV_OPTIONS from config.py for page list
+- Uses clear_dataset_state() from session.py for reset functionality
+- Returns selected page to main.py for routing
 """
 
 import streamlit as st
