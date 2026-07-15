@@ -39,7 +39,31 @@ def render_prediction_page():
 
     if result.get("confusion_matrix") is not None:
         st.markdown("### 🧠 Confusion matrix")
-        st.dataframe(pd.DataFrame(result["confusion_matrix"], columns=["Pred 0", "Pred 1"], index=["Actual 0", "Actual 1"]))
+        try:
+            cm = result["confusion_matrix"]
+            # Handle different confusion matrix formats
+            if isinstance(cm, (list, np.ndarray)):
+                cm_array = np.array(cm)
+                if cm_array.ndim == 2:
+                    # Determine appropriate column and index names based on matrix size
+                    n_classes = cm_array.shape[0]
+                    if n_classes == 2:
+                        columns = ["Pred 0", "Pred 1"]
+                        index = ["Actual 0", "Actual 1"]
+                    else:
+                        columns = [f"Pred {i}" for i in range(n_classes)]
+                        index = [f"Actual {i}" for i in range(n_classes)]
+                    st.dataframe(pd.DataFrame(cm_array, columns=columns, index=index))
+                else:
+                    st.warning("Confusion matrix has unexpected shape")
+                    st.write(cm)
+            else:
+                st.warning("Confusion matrix has unexpected format")
+                st.write(cm)
+        except Exception as e:
+            st.error(f"Error displaying confusion matrix: {str(e)}")
+            st.write("Raw confusion matrix data:")
+            st.write(result["confusion_matrix"])
 
     if result.get("cross_val_scores"):
         st.markdown("### 📈 Cross-validation scores")
