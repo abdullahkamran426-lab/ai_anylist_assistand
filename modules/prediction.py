@@ -71,12 +71,37 @@ Integration:
 - Supports both training new models and loading existing ones
 """
 
+import os
+import tempfile
+from typing import Dict, Any
+
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_score,
+    r2_score,
+    recall_score,
+)
+from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+
 
 def detect_problem_type(df: pd.DataFrame, target: str) -> str:
     """Infer whether the target should be treated as regression or classification."""
     series = df[target]
     # Use numpy dtype checking for better compatibility across pandas versions
-    import numpy as np
     if np.issubdtype(series.dtype, np.number):
         if series.nunique() <= 20:
             return "classification"
@@ -101,12 +126,12 @@ def prepare_data(df: pd.DataFrame, target: str):
     )
 
     preprocessor = ColumnTransformer(
-        [
+        transformers=[
             ("num", numeric_transformer, numerical),
             ("cat", categorical_transformer, categorical),
-        ],
-        remainder="drop",
+        ]
     )
+
     return X, y, preprocessor
 
 
