@@ -28,9 +28,12 @@ def render_prediction_page():
     result = st.session_state["prediction_result"]
     
     # Validate result is a dictionary
-    if not isinstance(result, dict):
+    if result is None or not isinstance(result, dict):
         st.error("Invalid prediction result format. Please retrain the model.")
         return
+    
+    # Debug: log the result structure
+    st.write("Debug: Result keys:", list(result.keys()) if isinstance(result, dict) else "Not a dict")
     
     st.markdown("### 🏆 Best model")
     st.info(f"{result.get('best_model_name', 'Unknown')} • Problem type: {result.get('problem', 'Unknown')}")
@@ -73,7 +76,7 @@ def render_prediction_page():
             st.write("Raw confusion matrix data:")
             st.write(result["confusion_matrix"])
 
-    if result.get("cross_val_scores"):
+    if "cross_val_scores" in result and result["cross_val_scores"] is not None:
         st.markdown("### 📈 Cross-validation scores")
         st.write(result["cross_val_scores"])
 
