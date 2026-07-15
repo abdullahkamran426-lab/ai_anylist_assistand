@@ -1,5 +1,7 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import streamlit as st
 
 from modules.prediction import forecast_series, predict, save_model, train_models
@@ -61,7 +63,20 @@ def render_prediction_page():
                     else:
                         columns = [f"Pred {i}" for i in range(n_classes)]
                         index = [f"Actual {i}" for i in range(n_classes)]
-                    st.dataframe(pd.DataFrame(cm_array, columns=columns, index=index))
+                    
+                    # Create heatmap
+                    fig, ax = plt.subplots(figsize=(8, 6))
+                    sns.heatmap(cm_array, annot=True, fmt='d', cmap='Blues', 
+                                xticklabels=columns, yticklabels=index, ax=ax)
+                    ax.set_xlabel('Predicted')
+                    ax.set_ylabel('Actual')
+                    ax.set_title('Confusion Matrix')
+                    st.pyplot(fig)
+                    plt.close(fig)
+                    
+                    # Also show as dataframe for detailed view
+                    with st.expander("View as table"):
+                        st.dataframe(pd.DataFrame(cm_array, columns=columns, index=index))
                 else:
                     st.warning("Confusion matrix has unexpected shape")
                     st.write(cm)
