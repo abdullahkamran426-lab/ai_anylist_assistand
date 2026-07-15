@@ -81,3 +81,18 @@ def export_to_pdf(text_content, filename="AI_Analysis_Report.pdf"):
     pdf.multi_cell(0, 10, txt=clean_text)
     pdf.output(tmp_filename)
     return tmp_filename
+
+def calculate_quality_score(df):
+    score = 100
+
+    missing_pct = (df.isna().sum().sum() / (df.shape[0] * df.shape[1])) * 100
+
+    duplicate_pct = (
+        df.duplicated().sum() / len(df) * 100
+        if len(df) > 0 else 0
+    )
+
+    score -= missing_pct * 0.5
+    score -= duplicate_pct * 0.5
+
+    return max(0, round(score))
