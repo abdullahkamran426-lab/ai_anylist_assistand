@@ -90,7 +90,32 @@ def render_prediction_page():
 
     if "cross_val_scores" in result and result["cross_val_scores"] is not None:
         st.markdown("### 📈 Cross-validation scores")
-        st.write(result["cross_val_scores"])
+        cv_scores = result["cross_val_scores"]
+        
+        # Display as bar chart
+        if len(cv_scores) > 0:
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.bar(range(1, len(cv_scores) + 1), cv_scores, color='steelblue', alpha=0.7)
+            ax.set_xlabel('Fold')
+            ax.set_ylabel('Score')
+            ax.set_title('Cross-Validation Scores')
+            ax.set_ylim([0, 1])
+            ax.axhline(y=np.mean(cv_scores), color='red', linestyle='--', label=f'Mean: {np.mean(cv_scores):.4f}')
+            ax.legend()
+            st.pyplot(fig)
+            plt.close(fig)
+            
+            # Show statistics
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Mean", f"{np.mean(cv_scores):.4f}")
+            col2.metric("Std", f"{np.std(cv_scores):.4f}")
+            col3.metric("Min", f"{np.min(cv_scores):.4f}")
+            
+            # Also show raw values in expander
+            with st.expander("View raw scores"):
+                st.write(cv_scores)
+        else:
+            st.info("No cross-validation scores available")
 
     if st.button("Save trained model"):
         try:
