@@ -119,9 +119,23 @@ def train_models(df: pd.DataFrame, target: str) -> Dict[str, Any]:
             best_name = name
 
     cv_scores = []
-    if len(X) >= 10:
-        cv_pipe = Pipeline([("prep", preprocessor), ("model", models[best_name])])
-        cv_scores = cross_val_score(cv_pipe, X, y, cv=min(5, len(X) // 2 if len(X) >= 2 else 1), scoring="accuracy" if problem_type == "classification" else "r2")
+    try:
+        if len(X) >= 10:
+            cv_pipe = Pipeline([("prep", preprocessor), ("model", models[best_name])])
+            # Use appropriate number of folds based on dataset size
+            n_folds = min(5, max(2, len(X) // 3))
+            cv_scores = cross_val_score(cv_pipe, X, y, cv=n_folds, 
+                                      scoring="accuracy" if problem_type == "classification" else "r2",
+                                      n_jobs=-1)
+        elif len(X) >= 5:
+            # For smaller datasets, use fewer folds
+            cv_pipe = Pipeline([("prep", preprocessor), ("model", models[best_name])])
+            cv_scores = cross_val_score(cv_pipe, X, y, cv=2, 
+                                      scoring="accuracy" if problem_type == "classification" else "r2",
+                                      n_jobs=-1)
+    except Exception as e:
+        # If cross-validation fails, leave empty list
+        cv_scores = []
 
     feature_importance = None
     if best_model is not None:

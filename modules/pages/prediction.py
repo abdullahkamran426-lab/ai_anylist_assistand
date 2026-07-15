@@ -93,7 +93,7 @@ def render_prediction_page():
         cv_scores = result["cross_val_scores"]
         
         # Display as bar chart
-        if len(cv_scores) > 0:
+        if len(cv_scores) > 0 and not all(score == 0 for score in cv_scores):
             fig, ax = plt.subplots(figsize=(8, 4))
             ax.bar(range(1, len(cv_scores) + 1), cv_scores, color='steelblue', alpha=0.7)
             ax.set_xlabel('Fold')
@@ -114,8 +114,11 @@ def render_prediction_page():
             # Also show raw values in expander
             with st.expander("View raw scores"):
                 st.write(cv_scores)
+        elif len(cv_scores) > 0 and all(score == 0 for score in cv_scores):
+            st.warning("Cross-validation scores are all 0. This may indicate an issue with the model or data.")
+            st.write("Raw scores:", cv_scores)
         else:
-            st.info("No cross-validation scores available")
+            st.info("Cross-validation was not performed (dataset too small or error occurred)")
 
     if st.button("Save trained model"):
         try:
