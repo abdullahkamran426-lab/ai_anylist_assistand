@@ -40,7 +40,7 @@ def render_home_page():
     # First row of features
     cols1 = st.columns(3)
     features1 = [
-        ("📂", "Upload & Parse",      "Drag-and-drop CSV, TSV, JSON, Parquet, or Excel files with auto-detected encoding."),
+        ("📂", "Upload and Paste",      "Drag-and-drop CSV, TSV, JSON, Parquet, or Excel files with auto-detected encoding."),
         ("🧹", "Interactive Cleaning","Drop duplicates, fix missing values, rename/drop columns, and cast datatypes visually."),
         ("📈", "Rich Visualizations", "Bar, histogram, pie, scatter, box, violin, and correlation charts powered by Plotly."),
     ]
