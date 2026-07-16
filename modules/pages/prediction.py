@@ -4,7 +4,12 @@ import pandas as pd
 import seaborn as sns
 import streamlit as st
 
-from modules.prediction import forecast_series, predict, save_model, train_models
+from modules.automl import (
+    forecast_regression_series,
+    predict_with_model,
+    save_prediction_model,
+    train_prediction_model,
+)
 from modules.utils import section
 
 
@@ -21,7 +26,7 @@ def render_prediction_page():
     target = st.selectbox("Select target column", df.columns, key="prediction_target")
     if st.button("Train model", type="primary"):
         with st.spinner("Training and comparing models..."):
-            result = train_models(df, target)
+            result = train_prediction_model(df, target)
         st.session_state["prediction_result"] = result
 
     if "prediction_result" not in st.session_state:
@@ -37,11 +42,21 @@ def render_prediction_page():
     st.markdown("### 🏆 Best model")
     st.info(f"{result.get('best_model_name', 'Unknown')} • Problem type: {result.get('problem', 'Unknown')}")
 
-    if "metrics" in result and result["best_model_name"] in result["metrics"]:
-        metrics = result["metrics"][result["best_model_name"]]
-        cols = st.columns(len(metrics))
-        for col, (name, value) in zip(cols, metrics.items()):
-            col.metric(name, f"{value:.4f}")
+    # Handle new automl.py return structure
+    if "metrics" in result:
+        metrics = result["metrics"]
+        if result.get("problem") == "classification":
+            # Classification metrics: accuracy, f1, confusion_matrix, labels
+            cols = st.columns(3)
+            cols[0].metric("Accuracy", f"{metrics.get('accuracy', 0):.4f}")
+            cols[1].metric("F1 Score", f"{metrics.get('f1', 0):.4f}")
+            cols[2].metric("Problem", metrics.get('problem', 'Unknown'))
+        else:
+            # Regression metrics: mae, rmse, r2
+            cols = st.columns(3)
+            cols[0].metric("MAE", f"{metrics.get('mae', 0):.4f}")
+            cols[1].metric("RMSE", f"{metrics.get('rmse', 0):.4f}")
+            cols[2].metric("R²", f"{metrics.get('r2', 0):.4f}")
 
     if result.get("feature_importance") is not None:
         st.markdown("### 🔍 Feature importance")
@@ -88,42 +103,18 @@ def render_prediction_page():
             st.write("Raw confusion matrix data:")
             st.write(result["confusion_matrix"])
 
-    if "cross_val_scores" in result and result["cross_val_scores"] is not None:
-        st.markdown("### 📈 Cross-validation scores")
-        cv_scores = result["cross_val_scores"]
-        
-        # Display as bar chart
-        if len(cv_scores) > 0 and not all(score == 0 for score in cv_scores):
-            fig, ax = plt.subplots(figsize=(8, 4))
-            ax.bar(range(1, len(cv_scores) + 1), cv_scores, color='steelblue', alpha=0.7)
-            ax.set_xlabel('Fold')
-            ax.set_ylabel('Score')
-            ax.set_title('Cross-Validation Scores')
-            ax.set_ylim([0, 1])
-            ax.axhline(y=np.mean(cv_scores), color='red', linestyle='--', label=f'Mean: {np.mean(cv_scores):.4f}')
-            ax.legend()
-            st.pyplot(fig)
-            plt.close(fig)
-            
-            # Show statistics
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Mean", f"{np.mean(cv_scores):.4f}")
-            col2.metric("Std", f"{np.std(cv_scores):.4f}")
-            col3.metric("Min", f"{np.min(cv_scores):.4f}")
-            
-            # Also show raw values in expander
-            with st.expander("View raw scores"):
-                st.write(cv_scores)
-        elif len(cv_scores) > 0 and all(score == 0 for score in cv_scores):
-            st.warning("Cross-validation scores are all 0. This may indicate an issue with the model or data.")
-            st.write("Raw scores:", cv_scores)
-        else:
-            st.info("Cross-validation was not performed (dataset too small or error occurred)")
+    if "comparison" in result and result["comparison"] is not None:
+        st.markdown("### 📈 Model comparison")
+        comparison_df = pd.DataFrame(result["comparison"])
+        st.dataframe(comparison_df)
 
     if st.button("Save trained model"):
         try:
-            if "best_model" in result:
-                path = save_model(result["best_model"], filename="trained_model.pkl")
+            if "model" in result:
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pkl") as tmp:
+                    path = tmp.name
+                save_prediction_model(result["model"], path)
                 with open(path, "rb") as fh:
                     st.download_button("Download model", fh, file_name="trained_model.pkl", mime="application/octet-stream")
             else:
@@ -133,25 +124,26 @@ def render_prediction_page():
 
     st.markdown("---")
     st.subheader("📝 Make a prediction")
-    
-    if "X" not in result:
+
+    if "feature_columns" not in result:
         st.error("Feature data not available. Please retrain the model.")
         return
-        
-    X = result["X"]
+
+    feature_columns = result["feature_columns"]
     user_data = {}
-    for col in X.columns:
-        if pd.api.types.is_numeric_dtype(X[col]):
-            user_data[col] = st.number_input(col, value=float(X[col].median()), key=f"pred_input_{col}")
-        else:
-            options = sorted([value for value in X[col].dropna().unique().tolist() if pd.notna(value)])
-            user_data[col] = st.selectbox(col, options, key=f"pred_select_{col}")
+    for col in feature_columns:
+        if col in df.columns:
+            if pd.api.types.is_numeric_dtype(df[col]):
+                user_data[col] = st.number_input(col, value=float(df[col].median()), key=f"pred_input_{col}")
+            else:
+                options = sorted([value for value in df[col].dropna().unique().tolist() if pd.notna(value)])
+                user_data[col] = st.selectbox(col, options, key=f"pred_select_{col}")
 
     if st.button("Predict"):
         try:
-            if "best_model" in result:
+            if "model" in result:
                 input_df = pd.DataFrame([user_data])
-                prediction = predict(result["best_model"], input_df)[0]
+                prediction = predict_with_model(result["model"], user_data)
                 st.success(f"Prediction: {prediction}")
             else:
                 st.error("No trained model found. Please retrain the model.")
@@ -165,7 +157,7 @@ def render_prediction_page():
         forecast_col = st.selectbox("Series to forecast", numeric_columns, key="forecast_series")
         periods = st.slider("Forecast horizon", min_value=1, max_value=12, value=6)
         if st.button("Forecast"):
-            forecast = forecast_series(df[forecast_col].dropna(), periods=periods)
+            forecast = forecast_regression_series(df[forecast_col].dropna(), periods=periods)
             st.line_chart(forecast)
     else:
         st.info("No numeric columns available for forecasting.")
