@@ -26,8 +26,14 @@ def render_prediction_page():
     target = st.selectbox("Select target column", df.columns, key="prediction_target")
     if st.button("Train model", type="primary"):
         with st.spinner("Training and comparing models..."):
-            result = train_prediction_model(df, target)
-        st.session_state["prediction_result"] = result
+            try:
+                result = train_prediction_model(df, target)
+                st.session_state["prediction_result"] = result
+                st.success("Model trained successfully!")
+            except Exception as e:
+                st.error(f"Failed to train models: {e}")
+                if "prediction_result" in st.session_state:
+                    del st.session_state["prediction_result"]
 
     if "prediction_result" not in st.session_state:
         return

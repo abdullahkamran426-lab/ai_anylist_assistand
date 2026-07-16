@@ -125,7 +125,18 @@ def train_prediction_model(df, target_column):
 
     # Rows with a missing target can't be used for supervised training.
     working = df.dropna(subset=[target_column]).copy()
+    if len(working) < 10:
+        raise ValueError(f"The dataset must have at least 10 rows after removing missing target values to train a model (currently has {len(working)}).")
+
     X = working.drop(columns=[target_column])
+    if X.shape[1] == 0:
+        raise ValueError("The dataset has no feature columns (excluding the target column) to train the model on.")
+
+    # Cast all non-numeric columns to strings to prevent SimpleImputer/OneHotEncoder errors
+    for col in X.columns:
+        if not pd.api.types.is_numeric_dtype(X[col]):
+            X[col] = X[col].astype(str)
+
     y = working[target_column]
     problem = detect_prediction_problem(working, target_column)
 
@@ -185,7 +196,11 @@ def train_prediction_model(df, target_column):
             comparison.append({"model": name, "error": str(exc)})
 
     if best_pipeline is None:
-        raise ValueError("No candidate model could be trained successfully on this data.")
+        errors = [f"{c['model']}: {c['error']}" for c in comparison if "error" in c]
+        error_msg = "No candidate model could be trained successfully on this data."
+        if errors:
+            error_msg += " Detailed errors: " + "; ".join(errors)
+        raise ValueError(error_msg)
 
     if problem == "classification":
         metrics = {
