@@ -459,29 +459,6 @@ Automated machine learning for classification and regression problems using scik
 
 ---
 
-## 🔧 Recent Updates
-
-### PDF Generation Fixes
-- Fixed "Not enough horizontal space to render a single character" error by implementing robust text handling
-- Added ASCII-only encoding for PDF compatibility
-- Implemented automatic text truncation to prevent cell overflow
-- Added exception handling with fallback to "N/A" for problematic text
-- Changed bordered tables to simple text format for better space management
-
-### Module Improvements
-- Added comprehensive documentation comments to all major modules
-- Enhanced error handling and import compatibility
-- Fixed pandas dtype checking for better version compatibility
-- Added missing `modules/__init__.py` for proper package resolution
-- Updated visualization module with additional chart types (box, violin, line, area, bubble, treemap, sunburst)
-
-### New Features
-- **AutoML Prediction:** Complete machine learning module for classification and regression
-- **Enhanced Visualizations:** Added 8 new chart types for comprehensive data exploration
-- **Improved PDF Reports:** More robust PDF generation with better error handling
-
----
-
 <div align="center">
   Built with 🐍 Python &nbsp;·&nbsp; ⚡ Streamlit &nbsp;·&nbsp; 🤖 OpenRouter &nbsp;·&nbsp; 🧠 scikit-learn
 </div>
