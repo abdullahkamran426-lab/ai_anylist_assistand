@@ -6,10 +6,12 @@ PDF export, and AutoML) in one ~850-line module, which is what caused the
 original corruption: duplicate logic and orphaned code from merged edits
 eventually left dead code sitting at module scope that crashed on import.
 
-It's now split into five focused modules:
+It's now split into six focused modules:
 
     data_loading.py    load_data, compute_file_hash
     data_cleaning.py   clean_data
+    encoding.py         get_encoding_recommendations, apply_one_hot_encoding,
+                        apply_label_encoding
     statistics.py      get_summary, get_numeric_stats, get_category_counts,
                         calculate_quality_score, get_missing_summary,
                         get_correlation_insights, get_outlier_summary
@@ -31,6 +33,11 @@ this facade exists purely for compatibility.
 
 from modules.data_loading import compute_file_hash, load_data
 from modules.data_cleaning import clean_data
+from modules.encoding import (
+    get_encoding_recommendations,
+    apply_one_hot_encoding,
+    apply_label_encoding,
+)
 from modules.statistics import (
     get_summary,
     get_numeric_stats,
@@ -72,6 +79,7 @@ from modules.automl import (
 
 __all__ = [
     "compute_file_hash", "load_data", "clean_data",
+    "get_encoding_recommendations", "apply_one_hot_encoding", "apply_label_encoding",
     "get_summary", "get_numeric_stats", "get_category_counts",
     "calculate_quality_score", "get_missing_summary",
     "get_correlation_insights", "get_outlier_summary",
