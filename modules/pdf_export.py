@@ -14,30 +14,20 @@ export_to_pdf() functions that assemble them all in the required order:
     → AI insights → Recommendations → Dataset quality score
     → Footer (page number + generation date, on every page).
 
-Interactivity
--------------
-This isn't just a static document — it uses fpdf2's real PDF navigation
-features:
-    - A clickable Table of Contents page (`insert_toc_placeholder`):
-      every entry jumps straight to its section.
-    - Native PDF bookmarks (`start_section`): shows up as a proper
-      outline/sidebar panel in Acrobat, Chrome, Preview, etc.
-    - "Back to Table of Contents" links under every section heading.
-    - Clickable KPI cards on the overview page that jump to their
-      corresponding detail section (Rows/Columns → Dataset Information,
-      Missing → Missing Values Analysis, Quality → Quality Score).
-
-All of the above is feature-detected at runtime (`hasattr(...)` + a
-`SUPPORTS_TOC` flag) and wrapped defensively, so on an older `fpdf`/
-`fpdf2` install that lacks these APIs the report still generates
-correctly — it just falls back to the plain, non-interactive layout
-instead of raising an error. Nothing about the *content* of the report
-depends on this; only the navigation layer does.
-
-Depends on statistics.py for calculate_quality_score/get_missing_summary/
-get_correlation_insights — those are dataset-description functions, not
-PDF-drawing functions, so they stay there and are imported here instead
-of duplicated.
+Educational Note for Students:
+-----------------------------
+Generating PDFs dynamically in Python involves a few key software engineering principles:
+1. Document Subclassing: We extend the `FPDF` class so we can override the `header()` and `footer()`
+   methods. FPDF calls these hooks automatically whenever a new page is added or a page break occurs.
+2. Headless Chart Plotting: Web servers do not have physical displays. We use `matplotlib.use("Agg")`
+   to render charts in memory as PNG files, and then insert those files into the PDF.
+3. Memory Management: Always call `plt.close()` after generating a chart. Otherwise, figures accumulate
+   in memory, leading to memory leaks and resource exhaustion.
+4. Character Encoding: Standard PDF fonts (like Arial) only support standard ASCII characters. We strip
+   non-ASCII/Unicode characters (e.g., emojis or specialized symbols) from AI text to prevent PDF crashes.
+5. Defensive Height Checking: Rather than drawing at static coordinates, we check if there is enough
+   height remaining on the current page (`_ensure_space()`) before adding tables or images, forcing a page
+   break if needed to keep the document clean.
 """
 
 import os
@@ -46,7 +36,7 @@ import tempfile
 from datetime import datetime
 
 import matplotlib
-matplotlib.use("Agg")  # headless backend — Streamlit has no display, only saves PNGs to disk
+matplotlib.use("Agg")  # Headless backend — streamlit runs without a display. Saves plots to disk instead.
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
@@ -68,42 +58,47 @@ DANGER = (231, 76, 60)
 LIGHT = (245, 247, 250)
 DARK = (44, 62, 80)
 
-# Whether the installed fpdf/fpdf2 version supports the interactive
-# navigation APIs this module uses. Checked once, against the class, so
-# every call site can just branch on this flag instead of repeating the
-# same hasattr() checks everywhere.
+# Check if the installed FPDF version supports interactive bookmarks and Table of Contents (TOC)
 SUPPORTS_TOC = hasattr(FPDF, "insert_toc_placeholder") and hasattr(FPDF, "start_section")
 SUPPORTS_LINKS = hasattr(FPDF, "add_link") and hasattr(FPDF, "set_link") and hasattr(FPDF, "link")
 
 
 class ReportPDF(FPDF):
-    """FPDF subclass with a branded header band, a footer that stamps the
-    generation date + page number on every page, and (when supported) a
-    Table-of-Contents renderer used by insert_toc_placeholder()."""
+    """
+    Subclass of FPDF to handle custom page styling and layout.
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.toc_page = None  # set once the Table of Contents page exists
+        self.toc_page = None  # Page number of the Table of Contents
 
     def header(self):
+        """
+        FPDF hook called automatically at the start of every page.
+        Draws the colored header banner.
+        """
         self.set_fill_color(*PRIMARY)
         self.set_text_color(255, 255, 255)
         self.set_font("Arial", "B", 16)
         self.cell(0, 12, "DataLens AI Report", ln=True, align="C", fill=True)
         self.ln(2)
+        # Reset text color back to default black for the page body
         self.set_text_color(0, 0, 0)
 
     def footer(self):
-        self.set_y(-15)
+        """
+        FPDF hook called automatically at the bottom of every page.
+        Stamps the date and the page number.
+        """
+        self.set_y(-15)  # Position 15 mm from bottom of page
         self.set_font("Arial", "I", 8)
         self.set_text_color(120, 120, 120)
         self.cell(0, 10, f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  Page {self.page_no()}", align="C")
 
     def render_toc(self, pdf, outline):
-        """Callback fpdf2 invokes exactly once, at output() time — after
-        every section's real page number is already known — to draw the
-        Table of Contents page reserved by insert_toc_placeholder(). Each
-        row is a clickable internal link straight to that section.
+        """
+        Callback invoked by fpdf2 during final output compilation.
+        Renders the table of contents page dynamically with links and page numbers.
         """
         pdf.set_font("Arial", "B", 16)
         pdf.set_text_color(*PRIMARY)
@@ -112,20 +107,25 @@ class ReportPDF(FPDF):
         pdf.set_text_color(0, 0, 0)
 
         for section in outline:
+            # Create a clickable link inside the PDF
             link = pdf.add_link()
             pdf.set_link(link, page=section.page_number)
+            
+            # Format indentation based on outline hierarchy level
             pdf.set_font("Arial", "B" if section.level == 0 else "", 11)
             pdf.set_x(15 + section.level * 8)
             pdf.cell(150, 9, ("    " * section.level) + section.name, link=link)
+            
+            # Draw page number on the right side
             pdf.set_font("Arial", "", 11)
             pdf.cell(0, 9, str(section.page_number), align="R", link=link, ln=True)
 
 
 def _start_section(pdf, title, level=0):
-    """Register `title` as both a PDF bookmark (viewer sidebar outline)
-    and a Table-of-Contents entry, via fpdf2's start_section(). Silently
-    does nothing if the installed version doesn't support it, so callers
-    never need their own feature check."""
+    """
+    Registers a section bookmark in the PDF outline sidebar and Table of Contents.
+    Defensively wraps the call for backwards compatibility with older FPDF versions.
+    """
     if not SUPPORTS_TOC:
         return
     try:
@@ -135,8 +135,9 @@ def _start_section(pdf, title, level=0):
 
 
 def _add_back_link(pdf):
-    """Small clickable 'Back to Table of Contents' line under a section
-    heading. No-op until the TOC page exists and link support is available."""
+    """
+    Renders a clickable link that jumps back to the Table of Contents page.
+    """
     if not SUPPORTS_LINKS or getattr(pdf, "toc_page", None) is None:
         return
     try:
@@ -151,14 +152,9 @@ def _add_back_link(pdf):
 
 
 def _section_title(pdf, title, subtitle=None, level=0, toc=True):
-    """Filled banner section heading, with an optional muted subtitle line.
-
-    When `toc` is True (the default) this also registers the heading as a
-    bookmark/Table-of-Contents entry and adds a "Back to Table of Contents"
-    link underneath — see _start_section()/_add_back_link(). Pass
-    toc=False for any one-off heading that shouldn't clutter the
-    navigation (none of the current report sections need this, but it's
-    there for future sub-headings).
+    """
+    Draws a standard colored banner heading with optional description subtitle.
+    Also handles bookmark creation and table-of-contents back-links.
     """
     if toc:
         _start_section(pdf, title, level=level)
@@ -167,11 +163,14 @@ def _section_title(pdf, title, subtitle=None, level=0, toc=True):
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 13)
     pdf.cell(0, 8, title, ln=True, fill=True)
+    
     if subtitle:
         pdf.ln(1)
         pdf.set_font("Arial", "", 9)
         pdf.set_text_color(90, 90, 90)
+        # multi_cell automatically wraps text to new lines
         pdf.multi_cell(0, 5, subtitle, new_x="LMARGIN", new_y="NEXT")
+        
     pdf.set_text_color(0, 0, 0)
 
     if toc:
@@ -181,28 +180,34 @@ def _section_title(pdf, title, subtitle=None, level=0, toc=True):
 
 
 def _body(pdf, text):
-    """Plain wrapped paragraph text."""
+    """Renders basic wrapped body paragraph text."""
     pdf.set_font("Arial", "", 10)
     pdf.multi_cell(0, 5, text, new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
 
 
 def _add_kpi_card(pdf, title, value, color, x, y, w=45, h=20, link=None):
-    """One small colored KPI tile (used in a row of 4 across the top of
-    page 1). When `link` is provided (an id from pdf.add_link()), the
-    whole tile becomes clickable and jumps to whatever section later
-    calls pdf.set_link(link) — see export_dataset_report()."""
+    """
+    Draws a solid colored KPI card displaying a key metric.
+    If 'link' is provided, the card behaves as a button jumping to that section.
+    """
+    # Draw background rectangle
     pdf.set_fill_color(*color)
     pdf.rect(x, y, w, h, style="F")
+    
+    # Render card title
     pdf.set_xy(x + 3, y + 3)
     pdf.set_font("Arial", "B", 8)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(w - 6, 4, title, ln=True)
+    
+    # Render card numeric value
     pdf.set_xy(x + 3, y + 10)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(w - 6, 6, str(value), ln=True)
     pdf.set_text_color(0, 0, 0)
 
+    # Bind link to the card boundaries
     if link is not None and SUPPORTS_LINKS:
         try:
             pdf.link(x, y, w, h, link)
@@ -211,19 +216,22 @@ def _add_kpi_card(pdf, title, value, color, x, y, w=45, h=20, link=None):
 
 
 def _ensure_space(pdf, needed_height):
-    """Force a page break if the remaining vertical space on the current
-    page is smaller than `needed_height` (in mm). Used before every chart
-    image so charts never get sliced across a page boundary — a real bug
-    in the previous version, which placed images at hardcoded (x, y)
-    coordinates regardless of how much text came before them."""
+    """
+    Checks if there is enough height remaining on the current page.
+    If not, it triggers a page break. Prevents images and tables from breaking awkwardly.
+    """
     if pdf.get_y() + needed_height > pdf.page_break_trigger:
         pdf.add_page()
 
 
 def _create_plot(path, draw_fn):
-    """Run `draw_fn` (which does all the actual plt.* calls), save the
-    current matplotlib figure to `path`, then close it so figures don't
-    leak across repeated report generations in the same Streamlit session."""
+    """
+    Executes a matplotlib plot function, saves the figure, and closes the plot context.
+    
+    Why close?
+    Matplotlib standard behaviors keep plots in memory. If not explicitly closed,
+    re-running report generation can cause RAM exhaustion or duplicate figure layers.
+    """
     draw_fn()
     plt.tight_layout()
     plt.savefig(path, dpi=180)
@@ -231,7 +239,7 @@ def _create_plot(path, draw_fn):
 
 
 def create_histogram(df):
-    """Histogram of the first numeric column found."""
+    """Generates a histogram plot for the first numeric column."""
     numeric = df.select_dtypes(include=np.number)
     if numeric.empty:
         return None
@@ -250,7 +258,7 @@ def create_histogram(df):
 
 
 def create_missing_chart(df):
-    """Bar chart of missing-value counts per affected column."""
+    """Generates a bar chart showing columns with missing values."""
     missing = df.isna().sum()
     missing = missing[missing > 0]
     if missing.empty:
@@ -268,7 +276,7 @@ def create_missing_chart(df):
 
 
 def create_dtype_chart(df):
-    """Pie chart of column dtypes (int64 / float64 / object / ...)."""
+    """Generates a pie chart of column data types."""
     counts = df.dtypes.astype(str).value_counts()
     if counts.empty:
         return None
@@ -285,11 +293,10 @@ def create_dtype_chart(df):
 
 
 def create_pie_chart(df):
-    """Pie chart of the top categories in the dataset's most useful
-    categorical column (highest cardinality under 12 unique values, so the
-    chart stays readable). Falls back to the dtype breakdown if no such
-    column exists — this is what satisfies the report's dedicated
-    "Pie chart" section, distinct from the dtype-only chart above."""
+    """
+    Generates a pie chart of categories for the most useful categorical column
+    (meaning the column has low category cardinality, 2 to 12 classes).
+    """
     categorical = df.select_dtypes(exclude=np.number)
     candidate = None
     for column in categorical.columns:
@@ -298,6 +305,7 @@ def create_pie_chart(df):
             candidate = column
             break
 
+    # Fall back to dtype breakdown if no low-cardinality categorical columns exist
     if candidate is None:
         return create_dtype_chart(df)
 
@@ -315,7 +323,7 @@ def create_pie_chart(df):
 
 
 def create_heatmap(df):
-    """Correlation heatmap across all numeric columns."""
+    """Generates a correlation heatmap across all numeric columns."""
     numeric = df.select_dtypes(include=np.number)
     if numeric.shape[1] < 2:
         return None
@@ -335,7 +343,7 @@ def create_heatmap(df):
 
 
 def add_statistics(pdf, df):
-    """'Statistical summary' section: per-numeric-column describe() table."""
+    """Renders the descriptive statistics section."""
     numeric = df.select_dtypes(include=np.number)
     if numeric.empty:
         return
@@ -344,13 +352,16 @@ def add_statistics(pdf, df):
     stats = numeric.describe().round(2)
 
     for column in stats.columns:
+        # Check height to avoid breaking stats tables across page breaks
         _ensure_space(pdf, 8 + len(stats.index) * 7)
 
+        # Draw column header
         pdf.set_fill_color(*PRIMARY)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Arial", "B", 10)
         pdf.cell(0, 8, column, ln=True, fill=True)
 
+        # Render stats rows
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", "", 9)
         for idx in stats.index:
@@ -360,7 +371,13 @@ def add_statistics(pdf, df):
 
 
 def add_ai_insights(pdf, ai_text):
-    """'AI insights' section: the AI assistant's most recent answer, boxed."""
+    """
+    Renders the AI Assistant response section.
+    
+    Why clean_text with regular expressions?
+    Standard PDF fonts (Helvetica, Times, Arial) cannot parse Unicode symbols or emojis.
+    Passing emojis to pdf.cell causes standard FPDF to crash. We strip non-ASCII characters to be safe.
+    """
     _ensure_space(pdf, 40)
     _section_title(pdf, "AI Insights", "Generated by the AI Assistant from this dataset's summary")
 
@@ -372,8 +389,7 @@ def add_ai_insights(pdf, ai_text):
 
 
 def add_recommendations(pdf, df):
-    """'Smart recommendations' section: a short checklist derived from
-    simple, explainable rules about the dataset's current state."""
+    """Renders suggestions checklist based on the dataset state."""
     _ensure_space(pdf, 60)
     _section_title(pdf, "Smart Recommendations", "Suggested next steps before modeling")
 
@@ -399,15 +415,7 @@ def add_recommendations(pdf, df):
 
 
 def add_summary(pdf, df, link=None):
-    """'Dataset quality score' closing section: the headline score plus a
-    one-line verdict on how ready the data is for analysis/modeling.
-
-    Unlike the other add_* helpers this doesn't go through
-    _section_title() (it draws its own big banner instead), so it
-    registers its own bookmark/TOC entry and back-link, and — if `link`
-    is provided (the KPI card's link id) — binds that link to this
-    section so the "Quality" KPI card on page 1 jumps here.
-    """
+    """Renders quality score banner and detailed verdict."""
     _ensure_space(pdf, 45)
     _start_section(pdf, "Dataset Quality Score", level=0)
 
@@ -419,6 +427,7 @@ def add_summary(pdf, df, link=None):
 
     score = calculate_quality_score(df)
 
+    # Draw banner
     pdf.set_fill_color(*PRIMARY)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 14)
@@ -439,16 +448,8 @@ def add_summary(pdf, df, link=None):
 
 
 def export_dataset_report(df, ai_text=""):
-    """Build the full branded, interactive PDF report and return the path
-    it was saved to.
-
-    Section order matches the product spec: cover → table of contents →
-    overview → KPI cards → dataset info → missing values → statistics →
-    correlation → histogram → pie chart → heatmap → AI insights →
-    recommendations → quality score. Auto page-breaking (`_ensure_space`
-    + fpdf2's own `set_auto_page_break`) is used throughout instead of
-    hardcoded (x, y) image coordinates, so sections never overlap
-    regardless of how much text precedes them.
+    """
+    Builds the full interactive PDF report and saves it to a temporary path.
     """
     pdf = ReportPDF()
     pdf.set_auto_page_break(True, margin=15)
@@ -464,7 +465,7 @@ def export_dataset_report(df, ai_text=""):
     missing_df = get_missing_summary(df)
     quality_subtitle = f"{df.shape[0]:,} rows | {df.shape[1]} columns | {score}/100 quality score"
 
-    # ── Page 1: cover band + overview + KPI cards + dataset info ──
+    # ── Cover page band + KPI cards + information details ──
     pdf.add_page()
     pdf.set_fill_color(*PRIMARY)
     pdf.rect(0, 0, 210, 55, style="F")
@@ -488,14 +489,12 @@ def export_dataset_report(df, ai_text=""):
                 f"The quality score is {score}/100, with {missing_total} missing values and "
                 f"{duplicate_total} duplicate rows.")
 
-    # Pre-create link targets for the KPI cards below — the sections they
-    # jump to don't exist yet, so we only know *that* a link should exist
-    # here; pdf.set_link() binds each one to its real page once that
-    # section is actually drawn further down.
+    # Links setup for cards
     info_link = pdf.add_link() if SUPPORTS_LINKS else None
     missing_link = pdf.add_link() if SUPPORTS_LINKS else None
     quality_link = pdf.add_link() if SUPPORTS_LINKS else None
 
+    # Draw KPI cards
     kpi_y = pdf.get_y() + 4
     _add_kpi_card(pdf, "Rows", f"{df.shape[0]:,}", PRIMARY, 15, kpi_y, 40, 24, link=info_link)
     _add_kpi_card(pdf, "Columns", df.shape[1], SUCCESS, 60, kpi_y, 40, 24, link=info_link)
@@ -503,6 +502,7 @@ def export_dataset_report(df, ai_text=""):
     _add_kpi_card(pdf, "Missing", missing_total, DANGER, 150, kpi_y, 40, 24, link=missing_link)
     pdf.set_y(kpi_y + 30)
 
+    # Info table
     _section_title(pdf, "Dataset Information")
     if info_link is not None and SUPPORTS_LINKS:
         try:
@@ -521,11 +521,7 @@ def export_dataset_report(df, ai_text=""):
         pdf.cell(60, 7, str(key), border=1)
         pdf.cell(100, 7, str(value), border=1, ln=True)
 
-    # ── Table of Contents page ──
-    # Reserved right after page 1 (so it reads Cover → Contents → rest of
-    # the report). insert_toc_placeholder() leaves this page blank and
-    # fills it in automatically at pdf.output() time, once every section
-    # below has been drawn and its real page number is known.
+    # ── Table of Contents placeholder page ──
     if SUPPORTS_TOC:
         try:
             pdf.add_page()
@@ -534,7 +530,7 @@ def export_dataset_report(df, ai_text=""):
         except Exception:
             pdf.toc_page = None
 
-    # ── Page 3+ (or 2+ without TOC support): missing values → statistics → correlation → charts ──
+    # ── Details section pages ──
     pdf.add_page()
     _section_title(pdf, "Missing Values Analysis", "Columns most affected by nulls")
     if missing_link is not None and SUPPORTS_LINKS:
@@ -557,10 +553,10 @@ def export_dataset_report(df, ai_text=""):
     else:
         _body(pdf, "No missing values were found in this dataset.")
 
-    # Statistical summary — delegated to the (previously unused) helper.
+    # Descriptive Statistics
     add_statistics(pdf, df)
 
-    # Correlation analysis
+    # Correlation relationships
     _ensure_space(pdf, 30)
     corr_pairs = get_correlation_insights(df)
     _section_title(pdf, "Correlation Analysis")
@@ -572,8 +568,7 @@ def export_dataset_report(df, ai_text=""):
     else:
         _body(pdf, "No strong numeric correlations (|r| >= 0.7) were detected in this dataset.")
 
-    # Histogram, pie chart, heatmap — each guarded by _ensure_space so a
-    # chart is never split across a page boundary.
+    # Charts & Plots
     hist_path = create_histogram(df)
     if hist_path:
         _ensure_space(pdf, 95)
@@ -595,12 +590,12 @@ def export_dataset_report(df, ai_text=""):
         pdf.image(heatmap_path, w=150)
         pdf.ln(4)
 
-    # AI insights, recommendations, and the closing quality-score verdict —
-    # each of these was previously a dead/unused function; now wired in.
+    # AI and closing summary sections
     add_ai_insights(pdf, ai_text)
     add_recommendations(pdf, df)
     add_summary(pdf, df, link=quality_link)
 
+    # Output to file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         output_path = tmp.name
     pdf.output(output_path)
@@ -608,8 +603,9 @@ def export_dataset_report(df, ai_text=""):
 
 
 def export_to_pdf(ai_text=""):
-    """Convenience wrapper used by the Export Report page: reads the current
-    dataset out of session_state so callers don't need to pass it explicitly."""
+    """
+    Convenience wrapper pulling the dataset from st.session_state.
+    """
     df = st.session_state.get("df")
     if df is None:
         raise ValueError("No dataset loaded")

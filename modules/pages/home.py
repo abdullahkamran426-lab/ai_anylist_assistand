@@ -33,18 +33,35 @@ def render_home_page():
 
     # ------------------------------------------------------------------------
     # FEATURE CARDS
-    # Four-column grid summarizing the app's capabilities
+    # Summarizing the app's capabilities in a 3-column grid (2 rows of 3 columns)
     # ------------------------------------------------------------------------
     section("CAPABILITIES", "Everything you need")
-    cols = st.columns(4)
-    features = [
-        ("📂", "Upload & Parse",      "Drag-and-drop any CSV file. Instant preview with auto-detection."),
-        ("🧹", "Interactive Cleaning","Drop duplicates, fix nulls, rename columns, cast types — visually."),
-        ("📈", "Rich Visualisations", "Bar, histogram, pie and scatter charts powered by Plotly."),
-        ("🤖", "AI Insights",         "Ask plain-English questions. Get instant answers from OpenRouter AI."),
+    
+    # First row of features
+    cols1 = st.columns(3)
+    features1 = [
+        ("📂", "Upload & Parse",      "Drag-and-drop CSV, TSV, JSON, Parquet, or Excel files with auto-detected encoding."),
+        ("🧹", "Interactive Cleaning","Drop duplicates, fix missing values, rename/drop columns, and cast datatypes visually."),
+        ("📈", "Rich Visualizations", "Bar, histogram, pie, scatter, box, violin, and correlation charts powered by Plotly."),
     ]
-    # zip() pairs each Streamlit column with its matching feature tuple
-    for col, (icon, title, desc) in zip(cols, features):
+    for col, (icon, title, desc) in zip(cols1, features1):
+        with col:
+            st.markdown(f"""
+            <div class='feat-card'>
+                <div class='feat-icon'>{icon}</div>
+                <div class='feat-title'>{title}</div>
+                <div class='feat-desc'>{desc}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # Second row of features
+    cols2 = st.columns(3)
+    features2 = [
+        ("🤖", "AI Assistant",         "Ask plain-English questions and get instant insights from OpenRouter AI (Llama 3.1)."),
+        ("🔮", "AutoML Predictor",     "Train regression/classification models, evaluate performances, and run single-row predictions."),
+        ("🎓", "Student Sandbox Mode",  "Interactive math tooltips, inline statistical notes (Z-scores, IQR), and model trace logs."),
+    ]
+    for col, (icon, title, desc) in zip(cols2, features2):
         with col:
             st.markdown(f"""
             <div class='feat-card'>
@@ -75,7 +92,7 @@ def render_home_page():
     section("WORKFLOW", "Three steps to insight")
     s1, s2, s3 = st.columns(3)
     steps = [
-        ("1", "Upload your CSV",        "Drop any comma-separated file.",           "Start on the Upload page →"),
+        ("1", "Upload your CSV",        "Drop any tabular data file.",              "Start on the Upload page →"),
         ("2", "Clean & Explore",        "Fix nulls, remove duplicates, cast types.", "Use the Clean Data page →"),
         ("3", "Visualize & Ask AI",     "Chart your data, then interrogate it.",    "Head to AI Assistant →"),
     ]
@@ -104,4 +121,7 @@ def render_home_page():
     <span class='pill pill-blue'>Plotly</span>
     <span class='pill pill-blue'>OpenRouter AI</span>
     <span class='pill pill-blue'>NumPy</span>
+    <span class='pill pill-blue'>scikit-learn</span>
+    <span class='pill pill-blue'>joblib</span>
+    <span class='pill pill-blue'>fpdf2</span>
     """, unsafe_allow_html=True)
