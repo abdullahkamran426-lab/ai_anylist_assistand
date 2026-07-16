@@ -97,7 +97,7 @@ class ReportPDF(FPDF):
         self.set_y(-15)
         self.set_font("Arial", "I", 8)
         self.set_text_color(120, 120, 120)
-        self.cell(0, 10, f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}  •  Page {self.page_no()}", align="C")
+        self.cell(0, 10, f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}  |  Page {self.page_no()}", align="C")
 
     def render_toc(self, pdf, outline):
         """Callback fpdf2 invokes exactly once, at output() time — after
@@ -171,7 +171,7 @@ def _section_title(pdf, title, subtitle=None, level=0, toc=True):
         pdf.ln(1)
         pdf.set_font("Arial", "", 9)
         pdf.set_text_color(90, 90, 90)
-        pdf.multi_cell(0, 5, subtitle)
+        pdf.multi_cell(0, 5, subtitle, new_x="LMARGIN", new_y="NEXT")
     pdf.set_text_color(0, 0, 0)
 
     if toc:
@@ -183,7 +183,7 @@ def _section_title(pdf, title, subtitle=None, level=0, toc=True):
 def _body(pdf, text):
     """Plain wrapped paragraph text."""
     pdf.set_font("Arial", "", 10)
-    pdf.multi_cell(0, 5, text)
+    pdf.multi_cell(0, 5, text, new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
 
 
@@ -367,7 +367,7 @@ def add_ai_insights(pdf, ai_text):
     clean_text = re.sub(r"[^\x00-\x7F]+", " ", ai_text or "No AI insights were generated for this dataset.")
     pdf.set_font("Arial", "", 10)
     pdf.set_fill_color(*LIGHT)
-    pdf.multi_cell(0, 8, clean_text[:1200], border=1, fill=True)
+    pdf.multi_cell(0, 8, clean_text[:1200], border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
 
 
@@ -394,7 +394,7 @@ def add_recommendations(pdf, df):
 
     pdf.set_font("Arial", "", 10)
     for rec in recommendations:
-        pdf.multi_cell(0, 7, f"•  {rec}")
+        pdf.multi_cell(0, 7, f"-  {rec}", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(3)
 
 
@@ -428,14 +428,14 @@ def add_summary(pdf, df, link=None):
     pdf.ln(3)
 
     if score >= 90:
-        verdict = "Excellent — this dataset is ready for machine learning with minimal prep."
+        verdict = "Excellent - this dataset is ready for machine learning with minimal prep."
     elif score >= 70:
-        verdict = "Good — minor cleaning is recommended before modeling."
+        verdict = "Good - minor cleaning is recommended before modeling."
     else:
-        verdict = "Needs work — address missing values and duplicates before deeper analysis."
+        verdict = "Needs work - address missing values and duplicates before deeper analysis."
 
     pdf.set_font("Arial", "", 11)
-    pdf.multi_cell(0, 8, verdict)
+    pdf.multi_cell(0, 8, verdict, new_x="LMARGIN", new_y="NEXT")
 
 
 def export_dataset_report(df, ai_text=""):
@@ -462,7 +462,7 @@ def export_dataset_report(df, ai_text=""):
     missing_total = int(df.isna().sum().sum())
     duplicate_total = int(df.duplicated().sum())
     missing_df = get_missing_summary(df)
-    quality_subtitle = f"{df.shape[0]:,} rows • {df.shape[1]} columns • {score}/100 quality score"
+    quality_subtitle = f"{df.shape[0]:,} rows | {df.shape[1]} columns | {score}/100 quality score"
 
     # ── Page 1: cover band + overview + KPI cards + dataset info ──
     pdf.add_page()
@@ -567,7 +567,7 @@ def export_dataset_report(df, ai_text=""):
     if corr_pairs:
         pdf.set_font("Arial", "", 10)
         for a, b, value in corr_pairs[:8]:
-            pdf.cell(0, 6, f"•  {a} and {b} show a strong correlation ({value})", ln=True)
+            pdf.cell(0, 6, f"-  {a} and {b} show a strong correlation ({value})", ln=True)
         pdf.ln(2)
     else:
         _body(pdf, "No strong numeric correlations (|r| >= 0.7) were detected in this dataset.")

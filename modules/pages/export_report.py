@@ -1,5 +1,5 @@
 import streamlit as st
-from modules.analysis import export_dataset_report
+from modules.pdf_export import export_dataset_report
 from modules.utils import section
 
 
