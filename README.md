@@ -2,17 +2,18 @@
 
 # ✦ PROJECT OVERVIEW
 
-### Data Analysis Assistant
+### DataLens — AI Data Analysis Assistant
 
 <p>
   Upload any CSV dataset and transform it into interactive visualizations,<br/>
-  statistical summaries, and AI-generated insights — all in minutes.
+  statistical summaries, AI-generated insights, and machine learning predictions — all in minutes.
 </p>
 
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white)](#)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.x-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)](#)
 [![Plotly](https://img.shields.io/badge/Plotly-Interactive-3F4F75?style=flat-square&logo=plotly&logoColor=white)](#)
 [![OpenRouter](https://img.shields.io/badge/AI-OpenRouter-7C5CFC?style=flat-square)](#)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-AutoML-F7931E?style=flat-square&logo=scikit-learn&logoColor=white)](#)
 
 **🌐 Live App:** [https://aianylistassistand-e4ufhunamkwkljyylj6col.streamlit.app/](https://aianylistassistand-e4ufhunamkwkljyylj6col.streamlit.app/)
 
@@ -22,10 +23,10 @@
 
 ## 📌 Overview
 
-**DataMind AI** is a modular Streamlit web application for interactive CSV data exploration.  
-It combines automated cleaning, Plotly visualizations, descriptive statistics, and a natural-language AI assistant — all accessible through a clean, sidebar-navigated interface.
+**DataLens** is a modular Streamlit web application for interactive CSV data exploration and analysis.  
+It combines automated cleaning, Plotly visualizations, descriptive statistics, natural-language AI assistance, and AutoML predictions — all accessible through a clean, sidebar-navigated interface.
 
-> **Stack:** Python · Streamlit · Pandas · Plotly · OpenRouter (Llama 3.1) · FPDF
+> **Stack:** Python · Streamlit · Pandas · Plotly · OpenRouter (Llama 3.1) · scikit-learn · FPDF2
 
 ---
 
@@ -37,22 +38,24 @@ It combines automated cleaning, Plotly visualizations, descriptive statistics, a
 | 🧹 | **Auto-Clean** | Deduplication, missing-value detection, and type normalization |
 | 👁 | **Dataset Preview** | Full table view with row, column, and missing value summary |
 | 📊 | **Statistics** | Numeric `describe()`, per-column missing values, and categorical counts |
-| 📈 | **Visualizations** | Bar, Histogram, Pie, and Scatter plots powered by Plotly |
+| 📈 | **Visualizations** | Bar, Histogram, Pie, Scatter, Box, Violin, Line, Area, and more via Plotly |
 | 🤖 | **AI Assistant** | Ask natural-language questions via Llama 3.1 8B on OpenRouter |
-| 📄 | **PDF Export** | Download AI-generated analysis as a professional PDF report |
+| 🔮 | **AutoML Prediction** | Train ML models (Linear, Decision Tree, Random Forest) for classification/regression |
+| 📄 | **PDF Export** | Download comprehensive analysis as a professional PDF report |
 
 ---
 
 ## 🗂 Repository Structure
 
 ```text
-Hackathon/
+ai_anylist_assistand/
 ├── main.py              # App entrypoint — routing, UI, session state
 ├── modules/             # Helper modules package
 │   ├── __init__.py      # Package marker
-│   ├── analysis.py      # Data loading, cleaning, statistics, PDF export
+│   ├── analysis.py      # Data loading, cleaning, statistics, PDF export, AutoML
 │   ├── visualization.py # Plotly chart generators
 │   ├── ai_helper.py     # OpenRouter AI client and question handler
+│   ├── prediction.py    # AutoML model training and prediction
 │   ├── config.py        # Configuration constants
 │   ├── session.py       # Session state management
 │   ├── sidebar.py       # Sidebar rendering
@@ -66,6 +69,7 @@ Hackathon/
 │   │   ├── statistics.py # Numeric stats & categories
 │   │   ├── visualizations.py # Plotly charts
 │   │   ├── ai_assistant.py # AI Q&A interface
+│   │   ├── prediction.py # AutoML model training UI
 │   │   ├── export_report.py # PDF report generation
 │   │   └── about.py     # App information
 │   └── style/           # CSS styling (package)
@@ -78,6 +82,7 @@ Hackathon/
 │       └── explore.py   # Stats/Visualizations styling
 ├── requirements.txt     # Python dependencies
 ├── .env                 # API key (not committed)
+├── .env.example        # API key template
 ├── .gitignore
 └── README.md
 ```
@@ -90,7 +95,7 @@ Hackathon/
 
 ```bash
 git clone https://github.com/abdullahkamran426-lab/ai_anylist_assistand.git
-cd datamind-ai
+cd ai_anylist_assistand
 ```
 
 ### 2 · Create & Activate a Virtual Environment
@@ -153,12 +158,13 @@ flowchart TD
     K --> M[📊 Statistics]
     K --> N[📈 Visualizations]
     K --> O[🤖 AI Assistant]
+    K --> P[🔮 Prediction]
 
     L  --> L1["pages/dataset_preview.py<br/>render_dataset_preview_page()"]
     M  --> M1["pages/statistics.py<br/>render_statistics_page()"]
     M1 --> M2["analysis.get_numeric_stats()"]
     N  --> N1["pages/visualizations.py<br/>render_visualizations_page()"]
-    N1 --> N2["visualization.plot_*()<br/>bar / histogram / pie / scatter"]
+    N1 --> N2["visualization.plot_*()<br/>bar / histogram / pie / scatter / box / violin"]
 
     O  --> O1["pages/ai_assistant.py<br/>render_ai_assistant_page()"]
     O1 --> O2["analysis.get_summary()"]
@@ -166,15 +172,22 @@ flowchart TD
     O3 --> O4["Llama 3.1 8B<br/>Response"]
     O4 --> O5[(💾 session_state<br/>answer)]
 
-    O5  --> P[📄 Export Report]
-    P  --> P1["pages/export_report.py<br/>render_export_page()"]
-    P1 --> P2["analysis.export_to_pdf()"]
-    P2 --> Q([⬇ Download PDF])
+    P  --> P1["pages/prediction.py<br/>render_prediction_page()"]
+    P1 --> P2["prediction.train_models()<br/>↓<br/>AutoML"]
+    P2 --> P3["scikit-learn<br/>Linear / Decision Tree / Random Forest"]
+    P3 --> P4[(💾 session_state<br/>prediction_result)]
+
+    O5  --> Q[📄 Export Report]
+    P4  --> Q
+    Q  --> Q1["pages/export_report.py<br/>render_export_page()"]
+    Q1 --> Q2["analysis.export_to_pdf()"]
+    Q2 --> R([⬇ Download PDF])
 
     style A  fill:#7C5CFC,color:#fff,stroke:none
     style K  fill:#1C2435,color:#DCE4F0,stroke:#2D3A52
     style O5 fill:#1C2435,color:#DCE4F0,stroke:#2D3A52
-    style Q  fill:#00D68F,color:#fff,stroke:none
+    style P4 fill:#1C2435,color:#DCE4F0,stroke:#2D3A52
+    style R  fill:#00D68F,color:#fff,stroke:none
 ```
 
 ---
@@ -285,8 +298,9 @@ All page rendering functions for the application, split into one module per page
 | `clean_data.py` | `render_clean_data_page()` | Interactive data cleaning with live preview |
 | `dataset_preview.py` | `render_dataset_preview_page()` | Full table view with column details |
 | `statistics.py` | `render_statistics_page()` | Numeric stats, missing values, value counts |
-| `visualizations.py` | `render_visualizations_page()` | Plotly chart builder (bar, histogram, pie, scatter) |
+| `visualizations.py` | `render_visualizations_page()` | Plotly chart builder (bar, histogram, pie, scatter, box, violin, etc.) |
 | `ai_assistant.py` | `render_ai_assistant_page()` | Natural-language Q&A with conversation history |
+| `prediction.py` | `render_prediction_page()` | AutoML model training and prediction interface |
 | `export_report.py` | `render_export_page()` | PDF report generation and download |
 | `about.py` | `render_about_page()` | App information and technology stack |
 
@@ -301,11 +315,14 @@ All page rendering functions for the application, split into one module per page
 | Function | Signature | Description |
 |:---|:---|:---|
 | `load_data` | `(uploaded_file)` | Reads CSV with encoding fallbacks (`utf-8` → `cp1252` → `latin1`). Cached with `@st.cache_data`. |
-| `clean_data` | `(df)` | Strips commas from `Gross` column and casts it to numeric. Returns cleaned DataFrame. |
+| `clean_data` | `(df)` | Strips commas from numeric columns and casts to proper types. Returns cleaned DataFrame. |
 | `get_summary` | `(df, filename)` | Builds a text snapshot (filename, shape, dtypes, head, describe) for the AI prompt. |
 | `get_numeric_stats` | `(df)` | Returns `df.describe()` for numeric columns, or `None` if none exist. |
 | `get_category_counts` | `(df, col)` | Returns `value_counts()` for a given categorical column. |
-| `export_to_pdf` | `(text, filename)` | Writes AI response to a PDF via FPDF, stripping non-ASCII characters first. |
+| `export_dataset_report` | `(df, filename, ai_answer)` | Generates comprehensive PDF report with statistics, charts, and AI insights. |
+| `clean_pdf_text` | `(text)` | Sanitizes text for PDF compatibility (ASCII-only, truncation, printable characters). |
+
+**PDF Generation:** Uses FPDF2 library with robust text handling to prevent horizontal space errors. Includes automatic truncation, Unicode sanitization, and exception handling for reliable PDF output.
 
 </details>
 
@@ -320,7 +337,17 @@ All functions return a **Plotly figure object** ready for `st.plotly_chart()`.
 | `plot_bar(df, col)` | Bar chart | Top 15 value counts of a categorical column |
 | `plot_histogram(df, col)` | Histogram | 30 bins across a numeric column |
 | `plot_pie(df, col)` | Pie chart | Top 8 categories of a categorical column |
-| `plot_scatter(df, x, y)` | Scatter plot | Two numeric columns on X and Y axes |
+| `plot_scatter(df, x, y)` | Scatter plot | Two numeric columns with OLS trendline |
+| `plot_box(df, col)` | Box plot | Distribution analysis for numeric columns |
+| `plot_violin(df, col)` | Violin plot | Distribution with box plot overlay |
+| `plot_line(df, x, y)` | Line chart | Time series or sequential data |
+| `plot_area(df, x, y)` | Area chart | Cumulative data visualization |
+| `plot_bubble(df, x, y, size)` | Bubble chart | Three-dimensional scatter plot |
+| `plot_treemap(df, path, values)` | Treemap | Hierarchical data visualization |
+| `plot_sunburst(df, path, values)` | Sunburst | Multi-level hierarchical data |
+| `plot_correlation_matrix(df)` | Heatmap | Correlation matrix for numeric columns |
+
+**Dependencies:** Requires `statsmodels` for trendline in scatter plots.
 
 </details>
 
@@ -334,10 +361,42 @@ All functions return a **Plotly figure object** ready for `st.plotly_chart()`.
 | Model | `meta-llama/llama-3.1-8b-instruct` |
 | `max_tokens` | `500` |
 | `temperature` | `0.3` |
+| Timeout | `30 seconds` |
 | Fallback | Returns a descriptive error string if the API key is missing or a request fails |
 
 **`ask_ai(question, dataset_summary)`**  
 Sends a combined prompt — dataset context and user question — to the model and returns the generated response string.
+
+</details>
+
+<details>
+<summary><strong>🔮 modules/prediction.py — AutoML Module</strong></summary>
+<br/>
+
+Automated machine learning for classification and regression problems using scikit-learn.
+
+| Function | Description |
+|:---|:---|
+| `detect_problem_type(df, target)` | Infers classification vs regression based on target dtype and unique values |
+| `prepare_data(df, target)` | Separates features/target, identifies categorical/numerical columns, creates preprocessing pipelines |
+| `train_models(df, target)` | Main AutoML function that trains multiple models and returns the best performer |
+| `predict_with_model(model, df, target)` | Makes predictions using trained model with same preprocessing |
+| `save_prediction_model(model, path)` | Saves trained model to disk as .pkl file |
+| `load_prediction_model(path)` | Loads saved model from disk |
+
+**Models Supported:**
+- **Classification:** Logistic Regression, Decision Tree Classifier, Random Forest Classifier
+- **Regression:** Linear Regression, Decision Tree Regressor, Random Forest Regressor
+
+**Data Preprocessing:**
+- Numeric features: median imputation
+- Categorical features: most frequent imputation + one-hot encoding
+- Automatic missing value handling
+- ColumnTransformer for pipeline integration
+
+**Evaluation Metrics:**
+- Classification: accuracy, precision, recall, f1-score, confusion matrix
+- Regression: R², MAE, MSE, RMSE
 
 </details>
 
@@ -349,11 +408,16 @@ Sends a combined prompt — dataset context and user question — to the model a
 |:---|:---|:---:|
 | `streamlit` | Web UI framework | ✅ |
 | `pandas` | Data loading and manipulation | ✅ |
+| `numpy` | Numeric utilities and array operations | ✅ |
 | `plotly` | Interactive chart rendering | ✅ |
-| `fpdf` | PDF report generation | ✅ |
+| `matplotlib` | Static chart generation (backup) | ✅ |
+| `seaborn` | Statistical visualization (backup) | ✅ |
+| `statsmodels` | Statistical models for trendlines | ✅ |
+| `scikit-learn` | Machine learning models and preprocessing | ✅ |
+| `joblib` | Model serialization | ✅ |
+| `fpdf2` | PDF report generation | ✅ |
 | `openai` | OpenRouter-compatible AI client | ✅ |
 | `python-dotenv` | `.env` variable loading | ✅ |
-| `numpy` | Numeric utilities | ✅ |
 
 ---
 
@@ -365,11 +429,14 @@ Sends a combined prompt — dataset context and user question — to the model a
 | **Streamlit** | Web UI framework - enables building interactive data apps with pure Python, no HTML/CSS/JS knowledge required, perfect for data tools |
 | **Pandas** | Data manipulation - industry-standard for CSV loading, cleaning, and statistical analysis, powerful DataFrame operations |
 | **Plotly** | Interactive visualizations - creates beautiful, interactive charts that work in browsers, better than static matplotlib for web apps |
+| **scikit-learn** | Machine learning - comprehensive library for classification, regression, preprocessing, and model evaluation |
 | **OpenRouter (Llama 3.1)** | AI integration - provides access to state-of-the-art LLMs for natural-language data analysis, cost-effective alternative to OpenAI |
-| **FPDF** | PDF generation - lightweight library for creating downloadable reports without complex dependencies |
+| **FPDF2** | PDF generation - lightweight library for creating downloadable reports without complex dependencies |
 | **OpenAI SDK** | AI client - OpenRouter-compatible client for making API calls to LLMs with proper error handling |
 | **python-dotenv** | Environment management - securely loads API keys from `.env` files, prevents hardcoding sensitive data |
 | **NumPy** | Numerical computing - efficient array operations, used by pandas for numeric column detection and statistics |
+| **statsmodels** | Statistical models - provides advanced statistical analysis and trendline calculations for scatter plots |
+| **joblib** | Model serialization - efficient serialization of trained ML models for saving and loading |
 
 ---
 
@@ -384,12 +451,37 @@ Sends a combined prompt — dataset context and user question — to the model a
 ## 📝 Notes
 
 - The **AI assistant is optional** — all other features work without an API key configured.
-- `clean_data()` currently targets a `Gross` column specifically. Extend it in `analysis.py` for your dataset's structure.
-- `matplotlib` and `seaborn` are in `requirements.txt` but not yet wired to any charts — swap Plotly functions in `visualization.py` if you prefer them.
+- **PDF Generation:** The app uses FPDF2 with robust text handling (ASCII encoding, truncation, exception handling) to prevent horizontal space errors during PDF report generation.
+- **AutoML Prediction:** The prediction module automatically detects classification vs regression problems and trains multiple models (Linear, Decision Tree, Random Forest) to find the best performer.
+- **Large Datasets:** For datasets with 100,000+ rows, the app offers sampling options to maintain responsive performance during statistics and visualizations.
+- **Data Cleaning:** The current cleaning function handles common issues like comma-separated numbers and type normalization. Extend it in `analysis.py` for specific dataset requirements.
+- **Chart Types:** While matplotlib and seaborn are available as dependencies, the app primarily uses Plotly for interactive web-friendly visualizations.
 
+---
+
+## 🔧 Recent Updates
+
+### PDF Generation Fixes
+- Fixed "Not enough horizontal space to render a single character" error by implementing robust text handling
+- Added ASCII-only encoding for PDF compatibility
+- Implemented automatic text truncation to prevent cell overflow
+- Added exception handling with fallback to "N/A" for problematic text
+- Changed bordered tables to simple text format for better space management
+
+### Module Improvements
+- Added comprehensive documentation comments to all major modules
+- Enhanced error handling and import compatibility
+- Fixed pandas dtype checking for better version compatibility
+- Added missing `modules/__init__.py` for proper package resolution
+- Updated visualization module with additional chart types (box, violin, line, area, bubble, treemap, sunburst)
+
+### New Features
+- **AutoML Prediction:** Complete machine learning module for classification and regression
+- **Enhanced Visualizations:** Added 8 new chart types for comprehensive data exploration
+- **Improved PDF Reports:** More robust PDF generation with better error handling
 
 ---
 
 <div align="center">
-  Built with 🐍 Python &nbsp;·&nbsp; ⚡ Streamlit &nbsp;·&nbsp; 🤖 OpenRouter
+  Built with 🐍 Python &nbsp;·&nbsp; ⚡ Streamlit &nbsp;·&nbsp; 🤖 OpenRouter &nbsp;·&nbsp; 🧠 scikit-learn
 </div>
