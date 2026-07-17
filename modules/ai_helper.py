@@ -52,26 +52,23 @@ else:
         timeout=30.0,  # 30 second timeout to prevent hanging
     )
 
-def ask_ai(question, dataset_summary):
+def ask_ai(question, dataset_summary, stream=False):
     if client is None:
         return "API Key missing. Add OPENROUTER_API_KEY in .env"
         
     try:
-        response = client.chat.completions.create(
-            model="meta-llama/llama-3.1-8b-instruct", # Using the affordable paid slug
-            max_tokens=500, # Limits tokens to save credits
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an expert Data Analysis Assistant. "
-                        "Analyze datasets, explain insights, and provide useful suggestions. "
-                        "Keep your answers brief and to the point."
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": f"""
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are an expert Data Analysis Assistant. "
+                    "Analyze datasets, explain insights, and provide useful suggestions. "
+                    "Keep your answers brief and to the point."
+                )
+            },
+            {
+                "role": "user",
+                "content": f"""
 Dataset Summary:
 {dataset_summary}
 
@@ -80,11 +77,31 @@ Question:
 
 Answer clearly and briefly.
 """
-                }
-            ],
-            temperature=0.3
-        )
-        return response.choices[0].message.content
+            }
+        ]
+        
+        if stream:
+            response = client.chat.completions.create(
+                model="meta-llama/llama-3.1-8b-instruct",
+                max_tokens=500,
+                messages=messages,
+                temperature=0.3,
+                stream=True
+            )
+            return response
+        else:
+            response = client.chat.completions.create(
+                model="meta-llama/llama-3.1-8b-instruct",
+                max_tokens=500,
+                messages=messages,
+                temperature=0.3
+            )
+            return response.choices[0].message.content
         
     except Exception as e:
+        if stream:
+            # Return an error generator for streaming mode
+            def error_generator():
+                yield f"AI Error: {e}"
+            return error_generator()
         return f"AI Error: {e}"

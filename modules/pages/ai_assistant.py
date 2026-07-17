@@ -114,11 +114,41 @@ def render_ai_assistant_page():
     if submitted:
         st.session_state.ai_prefill = ""
         if q.strip():
-            with st.spinner("Thinking…"):
-                summary = get_summary(df, st.session_state.filename)
-                ans = ask_ai(q, summary)
-            st.session_state.answer = ans
-            st.session_state.chat_history.append({"q": q.strip(), "a": ans})
-            st.rerun()
+            summary = get_summary(df, st.session_state.filename)
+            
+            # Create a placeholder for the streaming response
+            response_placeholder = st.empty()
+            full_response = ""
+            
+            try:
+                # Stream the AI response
+                stream = ask_ai(q, summary, stream=True)
+                
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        content = chunk.choices[0].delta.content
+                        full_response += content
+                        response_placeholder.markdown(f"""
+                        <div style='display:flex;justify-content:flex-start;gap:10px'>
+                            <div style='width:30px;height:30px;border-radius:9px;flex-shrink:0;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:.9rem'>🤖</div>
+                            <div style='max-width:75%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:14px 18px;border-radius:4px 16px 16px 16px;font-size:.9rem;line-height:1.7'>
+                                {full_response}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Save the complete response to session state
+                st.session_state.answer = full_response
+                st.session_state.chat_history.append({"q": q.strip(), "a": full_response})
+                st.rerun()
+                
+            except Exception as e:
+                response_placeholder.error(f"Streaming error: {e}")
+                # Fallback to non-streaming if streaming fails
+                with st.spinner("Retrying without streaming…"):
+                    ans = ask_ai(q, summary, stream=False)
+                st.session_state.answer = ans
+                st.session_state.chat_history.append({"q": q.strip(), "a": ans})
+                st.rerun()
         else:
             st.warning("Please enter a question.")
