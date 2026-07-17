@@ -104,12 +104,18 @@ def render_sidebar():
         # NAVIGATION CONTROL
         # Radio buttons for page navigation with cross-page redirect support
         # ------------------------------------------------------------------------
-        
+
         # Cross-page navigation trick: other pages can set st.session_state.redirect_to
         # to a page name and call st.rerun() to force the sidebar radio to open on that page.
         # We consume it once here (read it into _default_index, then clear it) so it doesn't
         # keep forcing that page on every future rerun.
-        _default_index = 0
+        # Use current_page as fallback to prevent unwanted redirects to Home.
+        try:
+            current_page = st.session_state.get("current_page", "🏠 Home")
+            _default_index = NAV_OPTIONS.index(current_page) if current_page in NAV_OPTIONS else 0
+        except Exception:
+            _default_index = 0
+
         if st.session_state.redirect_to in NAV_OPTIONS:
             _default_index = NAV_OPTIONS.index(st.session_state.redirect_to)
             st.session_state.redirect_to = None
@@ -122,6 +128,9 @@ def render_sidebar():
             index=_default_index,
             label_visibility="collapsed",
         )
+
+        # Update current_page to remember the user's selection
+        st.session_state.current_page = page
 
         # ------------------------------------------------------------------------
         # DATASET STATUS BADGE

@@ -45,6 +45,7 @@ SESSION_STATE_DEFAULTS = {
     "redirect_to": None,           # page name to force-navigate to on the next rerun
     "chat_history": [],            # list of {"q":..., "a":...} turns for the AI chat UI
     "ai_prefill": "",              # text to pre-fill the AI question box (from a suggestion chip)
+    "current_page": "🏠 Home",     # remember the current page to prevent unwanted redirects
 }
 
 # ----------------------------------------------------------------------------
